@@ -1,0 +1,3 @@
+This is log of some notes for the post-processing program
+the boundary points list doesn't include the starting point at the end (for closed boundary)
+the completion for closed boundary is finished during the plotting
