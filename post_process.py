@@ -14,6 +14,8 @@ import numpy
 from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
 from scipy.interpolate import splprep, splev
+import spline_fitting.subdivision as ss
+
 
 def get_desired_part(parts_list,ap):
 	part_name_requested = ap['part_name']
@@ -39,7 +41,6 @@ def extend_edge(edge_point0, edge_point1, no_of_insertion):
                        (edge_point0[1]+edge_point1[1])*point_index/no_of_insertion/10+(edge_point0[1]-edge_point1[1]))
         points.append(point_coord)
     return points
-
 
 def get_final_boundary(outside_boundary_coords, original_outside_nodes_dict, normal):
     # (outside, s_to_e,new_outside):
@@ -218,6 +219,357 @@ def get_final_boundary_long_cant(full_indexes, outside_boundary_coords, original
     # print("The outside nodes are: ",new_outside)
     return new_outside
 
+def spline_fitting_v1():
+    fig, ax = plt.subplots()
+    for cluster in inside_boundary:
+        cluster_nodes = []
+        for node in cluster.values():
+            if normal_abs[0] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[1:3:1])
+            elif normal_abs[1] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[0:3:2])
+            elif normal_abs[2] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[0:2:1])
+            else:
+                raise Exception("Max of normal is not found: ",normal_abs)
+        # m = len(cluster_nodes)
+        # import math
+        # m = m - math.sqrt(2*m)
+        cluster_nodes = numpy.array(cluster_nodes)
+        print("The inside_boundary are:")
+        if len(cluster_nodes) < 50:
+            smoothing = 5
+        elif 100 <= len(cluster_nodes) < 200:
+            smoothing = 40
+        elif 200 <= len(cluster_nodes) < 300:
+            smoothing = 40
+        else:
+            smoothing = 80
+        tck, u = splprep(cluster_nodes.T, u=None, s=smoothing, per=1)
+        u_new = numpy.linspace(u.min(), u.max(), 1000)
+        x_new, y_new = splev(u_new, tck, der=0)
+
+        # plt.plot(cluster_nodes[:,0], cluster_nodes[:,1], 'ro')
+        line, = plt.plot(x_new, y_new, 'b', lw=1.5)
+        # plt.plot(x_new, y_new, 'b--', lw=1)
+
+    # ------------- Plotting outside boundary for long cant
+    outside_plot = []
+    for node in outside_boundary.values():
+        outside_plot.append(node.coordinates)
+    # check list
+    # [(0, 135), (213, 215), (293, 391)]
+    # [(0, 135), (135, 213), (213, 215), (215, 293), (293, 391)]
+    # full_indexes = [(0, 130), (130, 213), (213, 215), (215, 298), (298, 391)]
+    # final_outside_boundary_coords = get_final_boundary_long_cant(full_indexes, outside_plot, original_outside_boundary)
+    final_outside_boundary_coords = get_final_boundary(outside_plot, original_outside_boundary, normal)
+    final_outside_boundary_coords = numpy.array(final_outside_boundary_coords)
+    tr_f_out_bd_coords = list(numpy.transpose(final_outside_boundary_coords))
+    # ax.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], lw=2)
+    line, = plt.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], 'b', lw=1.5)
+    plt.show()
+
+
+    # ---------------Plotting boundary extraction results
+    fig, ax = plt.subplots()
+    for cluster in inside_boundary:
+        cluster_nodes = []
+        for node in cluster.values():
+            if normal_abs[0] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[1:3:1])
+                if node == list(cluster.values())[-1]:
+                    cluster_nodes.append(list(cluster.values())[0].coordinates[1:3:1])
+            elif normal_abs[1] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[0:3:2])
+                if node == list(cluster.values())[-1]:
+                    cluster_nodes.append(list(cluster.values())[0].coordinates[0:3:2])
+            elif normal_abs[2] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[0:2:1])
+                if node == list(cluster.values())[-1]:
+                    cluster_nodes.append(list(cluster.values())[0].coordinates[0:2:1])
+            else:
+                raise Exception("Max of normal is not found: ",normal_abs)
+        cluster_nodes = numpy.array(cluster_nodes)
+        tr_cluster_nodes = numpy.transpose(cluster_nodes)
+        # ax.plot(tr_cluster_nodes[0], tr_cluster_nodes[1],'b--', lw=1)
+        line, = plt.plot(tr_cluster_nodes[0], tr_cluster_nodes[1],'b', lw=1.5)
+    outside_plot.append(outside_plot[0])
+    tr_outside_plot = numpy.transpose(numpy.array(outside_plot))
+    if normal_abs[0] == max(normal_abs):
+        line, = plt.plot(tr_outside_plot[1], tr_outside_plot[2],'b', lw=1.5)
+    elif normal_abs[1] == max(normal_abs):
+        line, = plt.plot(tr_outside_plot[0], tr_outside_plot[2],'b', lw=1.5)
+    elif normal_abs[2] == max(normal_abs):
+        line, = plt.plot(tr_outside_plot[0], tr_outside_plot[1],'b', lw=1.5)
+    else:
+        raise Exception("Max of normal is not found: ",normal_abs)
+    plt.show()
+
+def spline_fitting_v2():
+    fig, ax = plt.subplots()
+    for cluster in inside_boundary:
+        cluster_nodes = []
+        for node in cluster.values():
+            if normal_abs[0] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[1:3:1])
+            elif normal_abs[1] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[0:3:2])
+            elif normal_abs[2] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[0:2:1])
+            else:
+                raise Exception("Max of normal is not found: ",normal_abs)
+        # m = len(cluster_nodes)
+        # import math
+        # m = m - math.sqrt(2*m)
+        cluster_nodes = numpy.array(cluster_nodes)
+        print("The inside_boundary are:")
+        if len(cluster_nodes) < 50:
+            smoothing = 5
+        elif 100 <= len(cluster_nodes) < 200:
+            smoothing = 40
+        elif 200 <= len(cluster_nodes) < 300:
+            smoothing = 40
+        else:
+            smoothing = 80
+        tck, u = splprep(cluster_nodes.T, u=None, s=smoothing, per=1)
+        u_new = numpy.linspace(u.min(), u.max(), 1000)
+        x_new, y_new = splev(u_new, tck, der=0)
+
+        # plt.plot(cluster_nodes[:,0], cluster_nodes[:,1], 'ro')
+        line, = plt.plot(x_new, y_new, 'b', lw=1.5)
+        # plt.plot(x_new, y_new, 'b--', lw=1)
+
+    # ------------- Plotting outside boundary
+    outside_plot = []
+    for node in outside_boundary.values():
+        if normal_abs[0] == max(normal_abs):
+            outside_plot.append(node.coordinates[1:3:1])
+        elif normal_abs[1] == max(normal_abs):
+            outside_plot.append(node.coordinates[0:3:2])
+        elif normal_abs[2] == max(normal_abs):
+            outside_plot.append(node.coordinates[0:2:1])
+        else:
+            raise Exception("Max of normal is not found: ",normal_abs)
+    # check list
+    # [(0, 135), (213, 215), (293, 391)]
+    # [(0, 135), (135, 213), (213, 215), (215, 293), (293, 391)]
+    # full_indexes = [(0, 130), (130, 213), (213, 215), (215, 298), (298, 391)]
+    # final_outside_boundary_coords = get_final_boundary_long_cant(full_indexes, outside_plot, original_outside_boundary)
+
+    import spline_fitting.all_function
+    final_outside_boundary_coords = spline_fitting.all_function.get_final_boundary(outside_plot, original_outside_boundary)
+    final_outside_boundary_coords.append(final_outside_boundary_coords[0])
+    # final_outside_boundary_coords = numpy.array(final_outside_boundary_coords)
+    tr_f_out_bd_coords = list(numpy.transpose(numpy.array(final_outside_boundary_coords)))
+    # ax.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], lw=2)
+    line, = plt.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], 'b', lw=1.5)
+    plt.show()
+
+
+    # ---------------Plotting boundary extraction results
+    fig, ax = plt.subplots()
+    for cluster in inside_boundary:
+        cluster_nodes = []
+        for node in cluster.values():
+            if normal_abs[0] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[1:3:1])
+                if node == list(cluster.values())[-1]:
+                    cluster_nodes.append(list(cluster.values())[0].coordinates[1:3:1])
+            elif normal_abs[1] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[0:3:2])
+                if node == list(cluster.values())[-1]:
+                    cluster_nodes.append(list(cluster.values())[0].coordinates[0:3:2])
+            elif normal_abs[2] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[0:2:1])
+                if node == list(cluster.values())[-1]:
+                    cluster_nodes.append(list(cluster.values())[0].coordinates[0:2:1])
+            else:
+                raise Exception("Max of normal is not found: ",normal_abs)
+        cluster_nodes = numpy.array(cluster_nodes)
+        tr_cluster_nodes = numpy.transpose(cluster_nodes)
+        # ax.plot(tr_cluster_nodes[0], tr_cluster_nodes[1],'b--', lw=1)
+        line, = plt.plot(tr_cluster_nodes[0], tr_cluster_nodes[1],'b', lw=1.5)
+    plt.show()
+
+    fig, ax = plt.subplots()
+    outside_plot.append(outside_plot[0])
+    tr_outside_plot = numpy.transpose(numpy.array(outside_plot))
+    line, = plt.plot(tr_outside_plot[0], tr_outside_plot[1],'b', lw=1.5)
+
+    # if normal_abs[0] == max(normal_abs):
+    #     line, = plt.plot(tr_outside_plot[1], tr_outside_plot[2],'b', lw=1.5)
+    # elif normal_abs[1] == max(normal_abs):
+    #     line, = plt.plot(tr_outside_plot[0], tr_outside_plot[2],'b', lw=1.5)
+    # elif normal_abs[2] == max(normal_abs):
+    #     line, = plt.plot(tr_outside_plot[0], tr_outside_plot[1],'b', lw=1.5)
+    # else:
+    #     raise Exception("Max of normal is not found: ",normal_abs)
+    plt.show()
+    f_out_bd_coords = numpy.array(tr_f_out_bd_coords).transpose().tolist()
+    return f_out_bd_coords
+
+def plot_original():
+    fig, ax = plt.subplots()
+    inside_plot = []
+    for cluster in inside_boundary:
+        cluster_nodes = []
+        for node in cluster.values():
+            if normal_abs[0] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[1:3:1])
+            elif normal_abs[1] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[0:3:2])
+            elif normal_abs[2] == max(normal_abs):
+                cluster_nodes.append(node.coordinates[0:2:1])
+            else:
+                raise Exception("Max of normal is not found: ",normal_abs)
+        cluster_nodes.append(cluster_nodes[0])
+        inside_plot.append(cluster_nodes)
+        tr_cluster = numpy.transpose(cluster_nodes)
+        line, = plt.plot(tr_cluster[0], tr_cluster[1], 'b', lw=1.5)
+
+    # ------------Plotting outside boundary
+    outside_plot = []
+
+    for node in outside_boundary.values():
+        if normal_abs[0] == max(normal_abs):
+            outside_plot.append(node.coordinates[1:3:1])
+        elif normal_abs[1] == max(normal_abs):
+            outside_plot.append(node.coordinates[0:3:2])
+        elif normal_abs[2] == max(normal_abs):
+            outside_plot.append(node.coordinates[0:2:1])
+        else:
+            raise Exception("Max of normal is not found: ",normal_abs)
+    outside_plot.append(outside_plot[0])
+
+    original_outside_plot = []
+    for node in original_outside_boundary.values():
+        if normal_abs[0] == max(normal_abs):
+            original_outside_plot.append(node.coordinates[1:3:1])
+        elif normal_abs[1] == max(normal_abs):
+            original_outside_plot.append(node.coordinates[0:3:2])
+        elif normal_abs[2] == max(normal_abs):
+            original_outside_plot.append(node.coordinates[0:2:1])
+        else:
+            raise Exception("Max of normal is not found: ",normal_abs)
+
+    tr_out = list(numpy.transpose(outside_plot))
+    # line, = plt.plot(tr_out[0], tr_out[1], 'b', lw=1.5)
+    # plt.show()
+    inside_nodes_list = numpy.array(inside_plot).tolist()
+    outside_nodes_list = numpy.array(outside_plot).tolist()
+    original_nodes_list = numpy.array(original_outside_plot).tolist()
+    return inside_nodes_list,outside_nodes_list,original_nodes_list
+
+def get_nodes_coords_2d(boundary):
+    coords = []
+    for node in boundary.values():
+        if normal_abs[0] == max(normal_abs):
+            coords.append(node.coordinates[1:3:1])
+        elif normal_abs[1] == max(normal_abs):
+            coords.append(node.coordinates[0:3:2])
+        elif normal_abs[2] == max(normal_abs):
+            coords.append(node.coordinates[0:2:1])
+        else:
+            raise Exception("Max of normal is not found: ",normal_abs)
+    return coords
+
+
+def make_plots(ext_org=True,ext_spl=True,both_org=True,both_spl_void=True,both_spl_spl=True):
+
+    # fig, ax = plt.subplots()
+    outside_plot=get_nodes_coords_2d(outside_boundary)
+
+    inside_plot_org = []
+    for cluster in inside_boundary:
+        cluster_nodes = get_nodes_coords_2d(cluster)
+        # cluster_nodes = numpy.array(cluster_nodes)
+        inside_plot_org.append(cluster_nodes)
+
+    import spline_fitting.all_function
+    final_outside_boundary_coords = spline_fitting.all_function.get_final_boundary(outside_plot, original_outside_boundary)
+    final_outside_boundary_coords.append(final_outside_boundary_coords[0])
+
+    from geometry.void_replacement import replace_poly as v_rplc
+    circles = v_rplc(inside_plot_org)
+    #circles in format:[[centrex,centrey],r,[edgex,edgey],A]
+
+    if ext_org:
+        # outside_plot=get_nodes_coords_2d(outside_boundary)
+        outside_plot.append(outside_plot[0])
+        tr_out_org = list(numpy.array(outside_plot).transpose())
+        plt.figure(1)
+        line, = plt.plot(tr_out_org[0], tr_out_org[1], 'b', lw=1.5)
+        plt.title("Original external boundary")
+
+    if ext_spl:
+
+        # final_outside_boundary_coords = numpy.array(final_outside_boundary_coords)
+        tr_f_out_bd_coords = list(numpy.transpose(numpy.array(final_outside_boundary_coords)))
+        # ax.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], lw=2)
+        plt.figure(2)
+        line, = plt.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], 'b', lw=1.5)
+        plt.title("External boundary with spline fitting")
+
+    if both_org:
+        tr_out_org = list(numpy.array(outside_plot).transpose())
+        plt.figure(3)
+        plt.title("Both original boundary")
+        line, = plt.plot(tr_out_org[0], tr_out_org[1], 'b', lw=1.5)
+
+        for cluster in inside_plot_org:
+            cluster.append(cluster[0])
+            tr_cluster = list(numpy.array(cluster).transpose())
+            line, = plt.plot(tr_cluster[0], tr_cluster[1], 'b', lw=1.5)
+
+    if both_spl_void:
+        fig,ax = plt.subplots()
+        fig = plt.figure(4)
+        plt.title("External spline and internal voids")
+
+        def circle(x, y, radius=0.15):
+            from matplotlib.patches import Circle
+            from matplotlib.patheffects import withStroke
+            circle = Circle((x, y), radius, clip_on=False, zorder=10, linewidth=1.5,
+                            edgecolor='blue', facecolor=(0, 0, 0, 0),
+                            path_effects=[withStroke(linewidth=5, foreground='w')])
+            ax.add_artist(circle)
+        for circ in circles:
+            circle(circ[0][0],circ[0][1],circ[1])
+
+        tr_f_out_bd_coords = list(numpy.transpose(numpy.array(final_outside_boundary_coords)))
+        # ax.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], lw=2)
+        # plt.figure(2)
+        line, = plt.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], 'b', lw=1.5)
+
+    if both_spl_spl:
+        plt.figure(5)
+        plt.title("Both spline")
+        for cluster_nodes in inside_plot_org:
+            smoothness =0.5
+            # if len(cluster_nodes) < 50:
+            #     smoothness = 1
+            # elif 100 <= len(cluster_nodes) < 200:
+            #     smoothness = 40
+            # elif 200 <= len(cluster_nodes) < 300:
+            #     smoothness = 40
+            # else:
+            #     smoothness = 80
+            cluster_nodes_sm = ss.average_smoothing(cluster_nodes)
+            tck, u = splprep(numpy.array(cluster_nodes_sm).transpose(), u=None, s=smoothness, per=1)
+            u_new = numpy.linspace(u.min(), u.max(), 1000)
+            x_new, y_new = splev(u_new, tck, der=0)
+            line, = plt.plot(x_new, y_new, 'b', lw=1.5)
+
+        tr_f_out_bd_coords = list(numpy.transpose(numpy.array(final_outside_boundary_coords)))
+        line, = plt.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], 'b', lw=1.5)
+
+    plt.show()
+
+    return circles,final_outside_boundary_coords
+    # f_out_bd_coords = numpy.array(tr_f_out_bd_coords).transpose().tolist()
+    # return f_out_bd_coords
+
+
 if __name__ == '__main__':
     main_log = utilities.logger.main_log
     main_log.info("Post-processing starts.")
@@ -233,10 +585,10 @@ if __name__ == '__main__':
     del parsed_inp_file
     del parts_list
 
-
     ##------------ The boundary output is list of node instances
     (inside_boundary,outside_boundary,original_outside_boundary, normal) = \
         geometry.boundary_extractor.get_all_boundary_nodes(ap,part)
+
 
     # ---------Plotting inside boundary version 2 for long cantilever only
     # import spline_fitting.all_function
@@ -246,227 +598,24 @@ if __name__ == '__main__':
     # final_outside_boundary_coords = spline_fitting.all_function.get_final_boundary(outside_plot, original_outside_boundary)
     normal_abs = numpy.absolute(normal)
 
-    def spline_fitting_v1():
-        fig, ax = plt.subplots()
-        for cluster in inside_boundary:
-            cluster_nodes = []
-            for node in cluster.values():
-                if normal_abs[0] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[1:3:1])
-                elif normal_abs[1] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[0:3:2])
-                elif normal_abs[2] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[0:2:1])
-                else:
-                    raise Exception("Max of normal is not found: ",normal_abs)
-            # m = len(cluster_nodes)
-            # import math
-            # m = m - math.sqrt(2*m)
-            cluster_nodes = numpy.array(cluster_nodes)
-            print("The inside_boundary are:")
-            if len(cluster_nodes) < 50:
-                smoothing = 5
-            elif 100 <= len(cluster_nodes) < 200:
-                smoothing = 40
-            elif 200 <= len(cluster_nodes) < 300:
-                smoothing = 40
-            else:
-                smoothing = 80
-            tck, u = splprep(cluster_nodes.T, u=None, s=smoothing, per=1)
-            u_new = numpy.linspace(u.min(), u.max(), 1000)
-            x_new, y_new = splev(u_new, tck, der=0)
+    circles,f_out_bd_coords = make_plots()
 
-            # plt.plot(cluster_nodes[:,0], cluster_nodes[:,1], 'ro')
-            line, = plt.plot(x_new, y_new, 'b', lw=1.5)
-            # plt.plot(x_new, y_new, 'b--', lw=1)
-
-        # ------------- Plotting outside boundary for long cant
-        outside_plot = []
-        for node in outside_boundary.values():
-            outside_plot.append(node.coordinates)
-        # check list
-        # [(0, 135), (213, 215), (293, 391)]
-        # [(0, 135), (135, 213), (213, 215), (215, 293), (293, 391)]
-        # full_indexes = [(0, 130), (130, 213), (213, 215), (215, 298), (298, 391)]
-        # final_outside_boundary_coords = get_final_boundary_long_cant(full_indexes, outside_plot, original_outside_boundary)
-        final_outside_boundary_coords = get_final_boundary(outside_plot, original_outside_boundary, normal)
-        final_outside_boundary_coords = numpy.array(final_outside_boundary_coords)
-        tr_f_out_bd_coords = list(numpy.transpose(final_outside_boundary_coords))
-        # ax.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], lw=2)
-        line, = plt.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], 'b', lw=1.5)
-        plt.show()
-
-
-        # ---------------Plotting boundary extraction results
-        fig, ax = plt.subplots()
-        for cluster in inside_boundary:
-            cluster_nodes = []
-            for node in cluster.values():
-                if normal_abs[0] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[1:3:1])
-                    if node == list(cluster.values())[-1]:
-                        cluster_nodes.append(list(cluster.values())[0].coordinates[1:3:1])
-                elif normal_abs[1] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[0:3:2])
-                    if node == list(cluster.values())[-1]:
-                        cluster_nodes.append(list(cluster.values())[0].coordinates[0:3:2])
-                elif normal_abs[2] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[0:2:1])
-                    if node == list(cluster.values())[-1]:
-                        cluster_nodes.append(list(cluster.values())[0].coordinates[0:2:1])
-                else:
-                    raise Exception("Max of normal is not found: ",normal_abs)
-            cluster_nodes = numpy.array(cluster_nodes)
-            tr_cluster_nodes = numpy.transpose(cluster_nodes)
-            # ax.plot(tr_cluster_nodes[0], tr_cluster_nodes[1],'b--', lw=1)
-            line, = plt.plot(tr_cluster_nodes[0], tr_cluster_nodes[1],'b', lw=1.5)
-        outside_plot.append(outside_plot[0])
-        tr_outside_plot = numpy.transpose(numpy.array(outside_plot))
-        if normal_abs[0] == max(normal_abs):
-            line, = plt.plot(tr_outside_plot[1], tr_outside_plot[2],'b', lw=1.5)
-        elif normal_abs[1] == max(normal_abs):
-            line, = plt.plot(tr_outside_plot[0], tr_outside_plot[2],'b', lw=1.5)
-        elif normal_abs[2] == max(normal_abs):
-            line, = plt.plot(tr_outside_plot[0], tr_outside_plot[1],'b', lw=1.5)
+    f_out_bd_coords_list = f_out_bd_coords.copy()
+    for i in range(len(f_out_bd_coords)):
+        if isinstance(f_out_bd_coords[i],numpy.ndarray):
+            f_out_bd_coords_list[i] = f_out_bd_coords[i].tolist()
+        elif isinstance(f_out_bd_coords[i],tuple):
+            f_out_bd_coords_list[i] = list(f_out_bd_coords[i])
         else:
-            raise Exception("Max of normal is not found: ",normal_abs)
-        plt.show()
+            pass
 
-    def spline_fitting_v2():
-        fig, ax = plt.subplots()
-        for cluster in inside_boundary:
-            cluster_nodes = []
-            for node in cluster.values():
-                if normal_abs[0] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[1:3:1])
-                elif normal_abs[1] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[0:3:2])
-                elif normal_abs[2] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[0:2:1])
-                else:
-                    raise Exception("Max of normal is not found: ",normal_abs)
-            # m = len(cluster_nodes)
-            # import math
-            # m = m - math.sqrt(2*m)
-            cluster_nodes = numpy.array(cluster_nodes)
-            print("The inside_boundary are:")
-            if len(cluster_nodes) < 50:
-                smoothing = 5
-            elif 100 <= len(cluster_nodes) < 200:
-                smoothing = 40
-            elif 200 <= len(cluster_nodes) < 300:
-                smoothing = 40
-            else:
-                smoothing = 80
-            tck, u = splprep(cluster_nodes.T, u=None, s=smoothing, per=1)
-            u_new = numpy.linspace(u.min(), u.max(), 1000)
-            x_new, y_new = splev(u_new, tck, der=0)
-
-            # plt.plot(cluster_nodes[:,0], cluster_nodes[:,1], 'ro')
-            line, = plt.plot(x_new, y_new, 'b', lw=1.5)
-            # plt.plot(x_new, y_new, 'b--', lw=1)
-
-        # ------------- Plotting outside boundary
-        outside_plot = []
-        for node in outside_boundary.values():
-            if normal_abs[0] == max(normal_abs):
-                outside_plot.append(node.coordinates[1:3:1])
-            elif normal_abs[1] == max(normal_abs):
-                outside_plot.append(node.coordinates[0:3:2])
-            elif normal_abs[2] == max(normal_abs):
-                outside_plot.append(node.coordinates[0:2:1])
-            else:
-                raise Exception("Max of normal is not found: ",normal_abs)
-        # check list
-        # [(0, 135), (213, 215), (293, 391)]
-        # [(0, 135), (135, 213), (213, 215), (215, 293), (293, 391)]
-        # full_indexes = [(0, 130), (130, 213), (213, 215), (215, 298), (298, 391)]
-        # final_outside_boundary_coords = get_final_boundary_long_cant(full_indexes, outside_plot, original_outside_boundary)
-
-        import spline_fitting.all_function
-        final_outside_boundary_coords = spline_fitting.all_function.get_final_boundary(outside_plot, original_outside_boundary)
-        final_outside_boundary_coords = numpy.array(final_outside_boundary_coords)
-        tr_f_out_bd_coords = list(numpy.transpose(final_outside_boundary_coords))
-        # ax.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], lw=2)
-        line, = plt.plot(tr_f_out_bd_coords[0], tr_f_out_bd_coords[1], 'b', lw=1.5)
-        plt.show()
+    import json
+    with open(ap['test_dir_path']+'circles.txt', 'w') as file:
+        json.dump(circles,file)
+        json.dump(f_out_bd_coords_list,file)
+        file.close()
 
 
-        # ---------------Plotting boundary extraction results
-        fig, ax = plt.subplots()
-        for cluster in inside_boundary:
-            cluster_nodes = []
-            for node in cluster.values():
-                if normal_abs[0] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[1:3:1])
-                    if node == list(cluster.values())[-1]:
-                        cluster_nodes.append(list(cluster.values())[0].coordinates[1:3:1])
-                elif normal_abs[1] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[0:3:2])
-                    if node == list(cluster.values())[-1]:
-                        cluster_nodes.append(list(cluster.values())[0].coordinates[0:3:2])
-                elif normal_abs[2] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[0:2:1])
-                    if node == list(cluster.values())[-1]:
-                        cluster_nodes.append(list(cluster.values())[0].coordinates[0:2:1])
-                else:
-                    raise Exception("Max of normal is not found: ",normal_abs)
-            cluster_nodes = numpy.array(cluster_nodes)
-            tr_cluster_nodes = numpy.transpose(cluster_nodes)
-            # ax.plot(tr_cluster_nodes[0], tr_cluster_nodes[1],'b--', lw=1)
-            line, = plt.plot(tr_cluster_nodes[0], tr_cluster_nodes[1],'b', lw=1.5)
-        plt.show()
-
-        fig, ax = plt.subplots()
-        outside_plot.append(outside_plot[0])
-        tr_outside_plot = numpy.transpose(numpy.array(outside_plot))
-        line, = plt.plot(tr_outside_plot[0], tr_outside_plot[1],'b', lw=1.5)
-
-        # if normal_abs[0] == max(normal_abs):
-        #     line, = plt.plot(tr_outside_plot[1], tr_outside_plot[2],'b', lw=1.5)
-        # elif normal_abs[1] == max(normal_abs):
-        #     line, = plt.plot(tr_outside_plot[0], tr_outside_plot[2],'b', lw=1.5)
-        # elif normal_abs[2] == max(normal_abs):
-        #     line, = plt.plot(tr_outside_plot[0], tr_outside_plot[1],'b', lw=1.5)
-        # else:
-        #     raise Exception("Max of normal is not found: ",normal_abs)
-        plt.show()
-
-    def plot_original():
-        fig, ax = plt.subplots()
-        inside_plot = []
-        for cluster in inside_boundary:
-            cluster_nodes = []
-            for node in cluster.values():
-                if normal_abs[0] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[1:3:1])
-                elif normal_abs[1] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[0:3:2])
-                elif normal_abs[2] == max(normal_abs):
-                    cluster_nodes.append(node.coordinates[0:2:1])
-                else:
-                    raise Exception("Max of normal is not found: ",normal_abs)
-            cluster_nodes.append(cluster_nodes[0])
-            tr_cluster = numpy.transpose(cluster_nodes)
-            line, = plt.plot(tr_cluster[0], tr_cluster[1], 'b', lw=1.5)
-
-        # ------------Plotting outside boundary
-        outside_plot = []
-        for node in outside_boundary.values():
-            if normal_abs[0] == max(normal_abs):
-                outside_plot.append(node.coordinates[1:3:1])
-            elif normal_abs[1] == max(normal_abs):
-                outside_plot.append(node.coordinates[0:3:2])
-            elif normal_abs[2] == max(normal_abs):
-                outside_plot.append(node.coordinates[0:2:1])
-            else:
-                raise Exception("Max of normal is not found: ",normal_abs)
-        outside_plot.append(outside_plot[0])
-        tr_out = list(numpy.transpose(outside_plot))
-        line, = plt.plot(tr_out[0], tr_out[1], 'b', lw=1.5)
-        plt.show()
-
-    plot_original()
     quit()
 
 
@@ -475,17 +624,21 @@ if __name__ == '__main__':
     ax = plt.axes(projection='3d')
     inside_plot = []
     for cluster in inside_boundary:
+        cluster_boundary = []
         for node in cluster.values():
-            inside_plot.append(node.coordinates)
+            cluster_boundary.append(node.coordinates)
+        inside_plot.append(cluster_boundary)
 
-    tr_list = list(numpy.transpose(inside_plot))
+    for cluster in inside_plot:
+        tr_cluster = list(numpy.transpose(inside_plot))
 
     # ax.scatter(tr_list[0],tr_list[1],tr_list[2], c='r', marker='.', s=[2, 2, 2])
-    ax.scatter(tr_list[0],tr_list[1],tr_list[2], c='r', s=3)
+    ax.scatter(tr_cluster[0],tr_cluster[1],tr_cluster[2], c='r', s=3)
     # ax.plot3D(tr_list[0],tr_list[1],tr_list[2], 'ro-', s=2)
     ax.set_title("Inside boundary nodes")
     plt.show()
 
+    quit()
     print("outside: ",outside_boundary)
 
     fig = plt.figure()
@@ -520,13 +673,3 @@ if __name__ == '__main__':
     #     ax.grid(True)
     # plt.title('Final outside boundary')
     # plt.show()
-
-
-
-
-
-
-    # define pts from the question
-
-
-
