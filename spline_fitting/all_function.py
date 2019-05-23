@@ -463,44 +463,56 @@ def obtain_xy_of_bspline(input_coarse, output_xy_boundary, Control_list, n, form
     # following is to make the C-1 continuity by project the second control point into the line
     # the former or letter value is set before calling this function
     measure = math.sqrt((C_list[0][0]-C_list[-1][0])*(C_list[0][0]-C_list[-1][0])+(C_list[0][1]-C_list[-1][1])*(C_list[0][1]-C_list[-1][1]))/len(C_list)
-    measure /= 2
-    # if former!=(123456789,123456789):
-    # Updated on 31/01/19 by dedao
-    if True:
-        if former[0]==input_coarse[0][0]:
-            C_list[1][0]=former[0]
-            if  measure> C_list[1][1] - C_list[0][1]>0 : C_list[1][1] = C_list[0][1]+measure  # move the second control point
-            if  measure> C_list[0][1] - C_list[1][1] > 0 : C_list[1][1] = C_list[0][1]-measure
+    # measure /= 2
 
-        elif former[1]==input_coarse[0][1]:
-            C_list[1][1] = former[1]
-            if measure > C_list[1][0]-C_list[0][0] > 0 : C_list[1][0]=C_list[0][0]+measure
-            if measure > C_list[0][0]-C_list[1][0] > 0 : C_list[1][0]=C_list[0][0]-measure
-        else:  # The endpoint is not along the vertical or horizontal direction of the straight line
-            C_list[1][0] = former[0] + measure * (C_list[0][0] - former[0]) / math.sqrt(
-                (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
-            C_list[1][1] = former[1] + measure * (C_list[0][1] - former[1]) / math.sqrt(
-                (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
-            pass
+    # Updated on 23/05/19 by dedao.
+    # Update the algorithm for moving the endpoint for c1 continuity:
+    c1 = True
+    if c1 == True:
+        C_list[1][0] = former[0] + measure * (C_list[0][0] - former[0]) / math.sqrt(
+            (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
+        C_list[1][1] = former[1] + measure * (C_list[0][1] - former[1]) / math.sqrt(
+            (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
 
-            # raise ValueError('Check the former')
-    # if latter!=(123456789,123456789):
-    #  Updated on 31/01/19 by dedao
-    if True:
-        if latter[0]==input_coarse[-1][0]:
-            C_list[-2][0]=latter[0]
-            if measure > C_list[-2][1]-C_list[-1][1] > 0 : C_list[-2][1]=C_list[-1][1]+measure
-            if measure > C_list[-1][1] - C_list[-2][1] > 0: C_list[-2][1]=C_list[-1][1] - measure
-        elif latter[1]==input_coarse[-1][1]:
-            C_list[-2][1] = latter[1]
-            if measure > C_list[-2][0]-C_list[-1][0] > 0 : C_list[-2][0]=C_list[-1][0]+measure
-            if measure > C_list[-1][0] - C_list[-2][0] > 0: C_list[-2][0]=C_list[-1][0] - measure
-        else:
-            C_list[-2][0] = latter[0] + measure * (C_list[-1][0] - latter[0]) / math.sqrt(
-                (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
-            C_list[-2][1] = latter[1] + measure * (C_list[-1][1] - latter[1]) / math.sqrt(
-                (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
-            pass
+        C_list[-2][0] = latter[0] + measure * (C_list[-1][0] - latter[0]) / math.sqrt(
+            (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
+        C_list[-2][1] = latter[1] + measure * (C_list[-1][1] - latter[1]) / math.sqrt(
+            (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
+    # if True:
+    #     if former[0]==input_coarse[0][0]:
+    #         C_list[1][0]=former[0]
+    #         if  measure> C_list[1][1] - C_list[0][1]>0 : C_list[1][1] = C_list[0][1]+measure  # move the second control point
+    #         if  measure> C_list[0][1] - C_list[1][1] > 0 : C_list[1][1] = C_list[0][1]-measure
+    #
+    #     elif former[1]==input_coarse[0][1]:
+    #         C_list[1][1] = former[1]
+    #         if measure > C_list[1][0]-C_list[0][0] > 0 : C_list[1][0]=C_list[0][0]+measure
+    #         if measure > C_list[0][0]-C_list[1][0] > 0 : C_list[1][0]=C_list[0][0]-measure
+    #     else:  # The endpoint is not along the vertical or horizontal direction of the straight line
+    #         C_list[1][0] = former[0] + measure * (C_list[0][0] - former[0]) / math.sqrt(
+    #             (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
+    #         C_list[1][1] = former[1] + measure * (C_list[0][1] - former[1]) / math.sqrt(
+    #             (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
+    #         pass
+    #
+    #         # raise ValueError('Check the former')
+    # # if latter!=(123456789,123456789):
+    # #  Updated on 31/01/19 by dedao
+    # if True:
+    #     if latter[0]==input_coarse[-1][0]:
+    #         C_list[-2][0]=latter[0]
+    #         if measure > C_list[-2][1]-C_list[-1][1] > 0 : C_list[-2][1]=C_list[-1][1]+measure
+    #         if measure > C_list[-1][1] - C_list[-2][1] > 0: C_list[-2][1]=C_list[-1][1] - measure
+    #     elif latter[1]==input_coarse[-1][1]:
+    #         C_list[-2][1] = latter[1]
+    #         if measure > C_list[-2][0]-C_list[-1][0] > 0 : C_list[-2][0]=C_list[-1][0]+measure
+    #         if measure > C_list[-1][0] - C_list[-2][0] > 0: C_list[-2][0]=C_list[-1][0] - measure
+    #     else:
+    #         C_list[-2][0] = latter[0] + measure * (C_list[-1][0] - latter[0]) / math.sqrt(
+    #             (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
+    #         C_list[-2][1] = latter[1] + measure * (C_list[-1][1] - latter[1]) / math.sqrt(
+    #             (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
+    #         pass
             # print('latter',latter,"input_coarse",input_coarse[-1])
             # raise ValueError('Check the latter')
 
