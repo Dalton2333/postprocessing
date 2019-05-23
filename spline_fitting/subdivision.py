@@ -4,7 +4,7 @@ this is a trial on curve subdivision
 
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.interpolate import splprep, splev
+
 
 def chaikin_subd(points_list):
     """
@@ -34,13 +34,6 @@ def average_subd(points_list):
 def average_smoothing(points_list, averaging_ratio=0.5,per=False):
     """
     For point (x1,y1), (x2,y2), (x3,y3)
-    the line connecting p1 and p3 is: (y3-y)/(y3-y1)=(x3-x)/(x3-x1)
-    --> (x3-x1)(y3-y)=(y3-y1)(x3-x)
-    --> y3-y = (y3-y1)/(x3-x1)*(x3-x)
-    --> y-y3 = (y3-y1)/(x3-x1)*(x-x3)
-    The line perpendicular to the line p1-p3 has ratio: (x3-x1)/(y3-y1)
-    and it passes p2:
-    y-y2 = (x3-x1)/(y3-y1)*(x-x2)
 
     Shit, there is a easier solution:
     the mid point of p1 and p3 is:
@@ -71,7 +64,7 @@ def plot_points(points_list, title, closed_curve=False, rotation=None):
     points_list.append(points_list[0])
     tr_both = list(np.transpose(points_list))
     plt.scatter(tr_both[0],tr_both[1],c='r', marker='.',s=4)
-    line, = plt.plot(tr_both[0], tr_both[1], 'b', lw=1)
+    line, = plt.plot(tr_both[0], tr_both[1], 'black', lw=1)
     plt.title(title)
     plt.show()
 
@@ -155,7 +148,7 @@ def spline_fitting(curve_points, smoothness,per):
     :return:    x_new:np array for x values
                 y_new: np array for y values
     """
-    from scipy.interpolate import splprep, splev, splrep
+    from scipy.interpolate import splprep, splev
     all_points = np.array(curve_points,dtype=np.float64)
     length = len(all_points)
     # all_points = np.dot(all_points, 1000)
@@ -164,7 +157,7 @@ def spline_fitting(curve_points, smoothness,per):
     tck, u = splprep(all_points.T, u=None, s=smoothness, per=per)
     u_new = np.linspace(u.min(), u.max(), 1000)
     x_new, y_new = splev(u_new, tck, der=0)
-    # plt.plot(x_new, y_new, 'b', lw=1)
+    # plt.plot(x_new, y_new, 'black', lw=1)
     # plt.show()
     return x_new, y_new
 
@@ -204,7 +197,7 @@ def curve_spline_fitting(all_points, keep_index_slice, smoothness,per):
     y_new=np.append(y_new,all_points[0][1])
 
     # This is how the curve get plotted:
-    plt.plot(x_new, y_new, 'b', lw=1)
+    plt.plot(x_new, y_new, 'black', lw=1)
     plt.show()
     return x_new,y_new
 

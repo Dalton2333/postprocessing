@@ -6,13 +6,13 @@ This version uses string and integer in the bounadry instance
 No more instance in instance
 '''
 
+import copy
 
-import math
-import numpy as np
-import matplotlib.pyplot as plt
-from operator import attrgetter, methodcaller, itemgetter
 import geometry.constants
 import geometry.flat_geometry
+import math
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def get_cross_section(ap, part):
@@ -23,6 +23,11 @@ def get_cross_section(ap, part):
                                 part)
     return cross_section_set
 
+
+def get_keep_set(ap, part):
+    keep_set_name = ap['keep_set_name']
+    keep_set = geometry.flat_geometry.get_set(keep_set_name, "nset", part)
+    return keep_set.data
 
 def get_coords_average(list_of_coords):
     x = 0
@@ -61,6 +66,7 @@ def get_surface_normal(element_list, part):
             test_node_coords.append(part.nodes[node_label].coordinates)
         centre_coords_list.append(get_coords_average(test_node_coords))
     normal = get_coords_normal(centre_coords_list)
+    print("Normal:", normal)
     return normal
 
 
@@ -91,7 +97,7 @@ def get_cross_section_top_nodes_pattern(normal, element_label, part):
     edge_along_normal = []
     for edge in edge_list:
         # print("The edge vector is: ",edge)
-        if abs(np.dot(edge[-1], normal)) < 0.1:
+        if abs(np.dot(edge[-1], normal)) < 0.01:
             pass
         else:
             edge_along_normal.append(edge)
@@ -144,6 +150,9 @@ def get_cross_section_top_nodes_pattern(normal, element_label, part):
 
 
 def get_corrected_normal(normal, pattern, sample_elements_list, part):
+    """
+    This is to avoid the situation where general normal is from varying thickness cross-section
+    """
     surface_coords = []
     for element_label in sample_elements_list:
         element = part.elements[element_label]
@@ -151,6 +160,10 @@ def get_corrected_normal(normal, pattern, sample_elements_list, part):
         node = part.nodes[element.nodes[pattern[0]]]
         surface_coords.append(node.coordinates)
     corrected_normal = get_coords_normal(surface_coords)
+    if abs(np.dot(corrected_normal, normal)) > 0.9:
+        pass
+    else:
+        raise Exception("The original normal and corrected normal are:", normal, corrected_normal)
     if np.dot(corrected_normal, normal) > 0:
         pass
     elif np.dot(corrected_normal, normal) < 0:
@@ -163,31 +176,36 @@ def get_corrected_normal(normal, pattern, sample_elements_list, part):
 
 def get_cross_section_sample_elements(cross_section_set, part):
     cross_section_elements = cross_section_set.data
+    # while True:
+    #     import random
+    #     index = random.randrange(len(cross_section_elements))
+    #     element_label = list(cross_section_elements)[index]
     for element_label in cross_section_elements:
-        # print(element_label)
         element = part.elements[element_label]
-        # print(element.neighbours)
         if len(element.neighbours) >= 3:
             sample_elements = list(element.neighbours)
             return sample_elements
+        else:
+            pass
 
 
 def get_cross_section_normal(ap,part):
-    if ap['cross_section_normal'] == None:
+    if type(ap['cross_section_normal']) == np.ndarray:
+        normal = ap['cross_section_normal']
+    elif ap['cross_section_normal'] == None:
         cross_section_set = get_cross_section(ap,part)
         test_elements = get_cross_section_sample_elements(cross_section_set, part)
         normal = get_surface_normal(test_elements,part)
+        print("The normal is:", normal)
         element_label = test_elements[0]
         pattern, normal_sign_correction = get_cross_section_top_nodes_pattern(normal, element_label, part)
-        corrected_normal = get_corrected_normal(normal_sign_correction, pattern, test_elements, part)
-    elif type(ap['cross_section_normal']) == np.ndarray:
-        normal = ap['cross_section_normal']
+        # corrected_normal = get_corrected_normal(normal_sign_correction, pattern, test_elements, part)
     else:
         raise Exception("Cross section normal in parameters is expected to be a ndarray or None.")
 
 
     # print("The cross section normal is: ", corrected_normal)
-    return corrected_normal
+    return normal
 
 
 def get_cross_section_nodes(cross_section_set, ap,part):
@@ -212,6 +230,119 @@ def get_cross_section_nodes(cross_section_set, ap,part):
     cross_section_nodes = list(set(cross_section_nodes))
     print("The length of cross section nodes is: ",len(cross_section_nodes))
     return cross_section_nodes, pattern
+
+
+def node_on_plane(node, plane, part):
+    coord = part.nodes[node].coordinates
+    if np.dot(coord - plane[0], plane[1]) == 0:
+        on_plane = True
+    else:
+        on_plane = False
+    return on_plane
+
+
+def get_external_plane(test_element_label, normal, part):
+    node_labels = part.elements[test_element_label].nodes
+    coords = []
+    for node_label in node_labels:
+        coords.append(part.nodes[node_label].coordinates)
+    edge_list = [[(0, 1), np.array([coords[1]]) - np.array([coords[0]])],
+                 [(1, 2), np.array([coords[2]]) - np.array([coords[1]])],
+                 [(2, 3), np.array([coords[3]]) - np.array([coords[2]])],
+                 [(3, 0), np.array([coords[0]]) - np.array([coords[3]])],
+                 [(4, 5), np.array([coords[5]]) - np.array([coords[4]])],
+                 [(5, 6), np.array([coords[6]]) - np.array([coords[5]])],
+                 [(6, 7), np.array([coords[7]]) - np.array([coords[6]])],
+                 [(7, 4), np.array([coords[4]]) - np.array([coords[7]])],
+                 [(0, 4), np.array([coords[4]]) - np.array([coords[0]])],
+                 [(1, 5), np.array([coords[5]]) - np.array([coords[1]])],
+                 [(2, 6), np.array([coords[6]]) - np.array([coords[2]])],
+                 [(3, 7), np.array([coords[7]]) - np.array([coords[3]])]]
+    edge_along_normal = []
+    for edge in edge_list:
+        # print("The edge vector is: ",edge)
+        if abs(np.dot(edge[-1], normal)) < 0.1:
+            pass
+        else:
+            edge_along_normal.append(edge)
+    # print("The edge along normal is: ",edge_along_normal)
+    # print(edge_along_normal)
+    if len(edge_along_normal) == 4:
+        pass
+    else:
+        raise Exception("More than 4 edges along the normal.", edge_along_normal)
+
+    ext_nodes = []
+
+    edge = edge_along_normal[0]
+    edge_label = edge[0]
+    start_node = part.nodes[node_labels[edge_label[0]]]
+    end_node = part.nodes[node_labels[edge_label[1]]]
+    if len(start_node.neighbours) >= len(end_node.neighbours):
+        if np.dot(edge[1], normal) > 0:
+            pass
+        elif np.dot(edge[1], normal) < 0:
+            normal = normal * -1
+        else:
+            raise Exception()
+    # elif len(start_node.neighbours) == len(end_node.neighbours):
+    else:
+        if np.dot(edge[1], normal) < 0:
+            pass
+        elif np.dot(edge[1], normal) > 0:
+            normal = normal * -1
+        else:
+            raise Exception()
+
+    for edge in edge_along_normal:
+        edge_label = edge[0]  # (2,3)
+        # sample_direction_sign = np.dot(edge_along_normal[0][1],normal)
+        start_node_label = node_labels[edge_label[0]]
+        end_node_label = node_labels[edge_label[1]]
+        start_node = part.nodes[start_node_label]
+        end_node = part.nodes[end_node_label]
+        if np.dot(edge[1], normal) > 0:
+            ext_nodes.append(end_node_label)
+        elif np.dot(edge[1], normal) < 0:
+            ext_nodes.append(start_node_label)
+        else:
+            raise Exception()
+    ext_plane = [part.nodes[ext_nodes[0]].coordinates, normal]
+    for node in ext_nodes[1:]:
+        if node_on_plane(node, ext_plane, part):
+            pass
+        else:
+            raise ValueError("Point not on plane:", node, part.nodes[node], ext_plane)
+    return ext_plane
+
+
+def get_cross_section_nodes_v2(cross_section_set, ap, part):
+    cross_section_set_data = list(cross_section_set.data)
+    test_elements = get_cross_section_sample_elements(cross_section_set, part)
+    if ap['cross_section_normal'] == None:
+        normal = get_surface_normal(test_elements, part)
+    elif type(ap['cross_section_normal']) == np.ndarray:
+        normal = ap['cross_section_normal']
+    else:
+        raise Exception("Cross section normal in parameters is expected to be a ndarray or None.")
+    # print("the normal vector is: ",normal)
+    ext_plane = get_external_plane(test_elements[0], normal, part)
+    normal = ext_plane[1]
+    ap['cross_section_normal'] = normal
+
+    # pattern = get_cross_section_top_nodes_pattern(normal, 4000, part)
+    # print("the pattern is:",pattern)
+    cross_section_nodes = []
+    for element_label in cross_section_set_data:
+        element = part.elements[element_label]
+        for node in element.nodes:
+            if node_on_plane(node, ext_plane, part):
+                cross_section_nodes.append(node)
+            else:
+                pass
+    cross_section_nodes = list(set(cross_section_nodes))
+    print("The length of cross section nodes is: ", len(cross_section_nodes))
+    return cross_section_nodes, ext_plane
 
 
 def get_boundary_elements(cross_section_set, ap,part):
@@ -500,39 +631,40 @@ def add_void_elements(void_boundary_elements, part, void_elements, pattern, norm
     void_elements = list(set(void_elements))
     return void_elements
 
-def get_void_elements(void_boundary_elements, part, pattern, normal):
-    void_elements = []
-    void_elements = add_void_elements(void_boundary_elements, part, void_elements, pattern, normal)
 
-    while True:
-        ve_temp = void_elements.copy()
-        void_elements = add_void_elements(ve_temp, part, void_elements, pattern, normal)
+# def get_void_elements(void_boundary_elements, part, pattern, normal):
+#     void_elements = []
+#     void_elements = add_void_elements(void_boundary_elements, part, void_elements, pattern, normal)
+# 
+#     while True:
+#         ve_temp = void_elements.copy()
+#         void_elements = add_void_elements(ve_temp, part, void_elements, pattern, normal)
+# 
+#         if len(ve_temp) == len(void_elements):
+#             break
+#     print("Check 1.")
+#     return void_elements
 
-        if len(ve_temp) == len(void_elements):
-            break
-    print("Check 1.")
-    return void_elements
 
-
-def get_elements_clusters(void_boundary_elements, part, pattern, normal):
-
-    void_elements = []
-    void_elements = add_void_elements(void_boundary_elements, part, void_elements, pattern, normal)
-    while True:
-        ve_temp = void_elements.copy()
-        void_elements = add_void_elements(ve_temp, part, void_elements, pattern, normal)
-        if len(ve_temp) == len(void_elements):
-            break
-    print("Check 2.")
+def get_elements_clusters(void_elements, part, ext_plane):
+    # void_elements = []
+    # void_elements = add_void_elements(void_boundary_elements, part, void_elements, pattern, normal)
+    # while True:
+    #     ve_temp = void_elements.copy()
+    #     void_elements = add_void_elements(ve_temp, part, void_elements, pattern, normal)
+    #     if len(ve_temp) == len(void_elements):
+    #         break
+    # print("Check 2.")
     clusters = []
     # print("The voids elements are:", void_elements)
     # quit()
     for ve_label in void_elements:
         ve_cluster = [ve_label]
-        ve_cluster = add_void_elements(ve_cluster.copy(), part, ve_cluster, pattern, normal)
+        # ve_cluster = add_void_elements(ve_cluster.copy(), part, ve_cluster, pattern, normal)
         clusters.append(ve_cluster)
     clusters = list(eval(x) for x in set([str(x) for x in clusters]))
-    clusters_temp = clusters.copy()
+    # import copy
+    clusters_temp = copy.deepcopy(clusters)
     # print("The initial clusters are: ",clusters)
 
     while True:
@@ -546,14 +678,14 @@ def get_elements_clusters(void_boundary_elements, part, pattern, normal):
 
                         # print("Checking cluster: ", cluster)
                         length0 = len(cluster)
-                        lengthp1 = len(clusters_temp[cluster_no+1])
+                        length1 = len(clusters_temp[cluster_no + 1])
                         cluster_extend = list(set(cluster + clusters_temp[cluster_no+1]))
-                        if length0 + lengthp1 > len(cluster_extend):
+                        if length0 + length1 > len(cluster_extend):
                             no_update = False
                             clusters.remove(cluster)
                             clusters.remove(clusters_temp[cluster_no+1])
                             clusters.append(cluster_extend)
-                        elif length0 + lengthp1 == len(cluster_extend):
+                        elif length0 + length1 == len(cluster_extend):
                             pass
                         else:
                             raise ValueError("The two lists are: {} and {}.".format(cluster, clusters_temp[cluster_no+1]))
@@ -579,14 +711,14 @@ def get_elements_clusters(void_boundary_elements, part, pattern, normal):
                     if cluster in clusters:
                         if not cluster == clusters_temp[i+1]:
                             length0 = len(cluster)
-                            lengthp1 = len(clusters_temp[i+1])
+                            length1 = len(clusters_temp[i + 1])
                             cluster_extend = list(set(cluster + clusters_temp[i+1]))
-                            if length0 + lengthp1 > len(cluster_extend):
+                            if length0 + length1 > len(cluster_extend):
                                 no_update = False
                                 clusters.remove(cluster)
                                 clusters.remove(clusters_temp[i+1])
                                 clusters.append(cluster_extend)
-                            elif length0 + lengthp1 == len(cluster_extend):
+                            elif length0 + length1 == len(cluster_extend):
                                 print("Comparing clusters: {}, {}".format(cluster, clusters_temp[i+1]))
                                 pass
                             else:
@@ -603,6 +735,39 @@ def get_elements_clusters(void_boundary_elements, part, pattern, normal):
             break
     print("Check 4.")
     return clusters
+
+
+def get_elements_clusters_v2(void_elements, part, ):
+    queue = []
+    ves = void_elements.copy()
+    clusters = []
+    tabu_list = []
+    while len(ves) != 0:
+        cluster = []
+        queue.append(ves[0])
+        while len(queue) != 0:
+            element0 = queue.pop(0)
+            cluster.append(element0)
+            if element0 in ves:
+                ves.remove(element0)
+            tabu_list.append(element0)
+            neighbours = list(part.elements[element0].neighbours)
+            void_neighbours = neighbours.copy()
+            for e in neighbours:
+                if e in void_elements:
+                    if e in tabu_list:
+                        void_neighbours.remove(e)
+                    else:
+                        pass
+                else:
+                    void_neighbours.remove(e)
+            queue.extend(void_neighbours)
+        clusters.append(cluster)
+    return clusters
+
+
+
+
 
 def get_outside_boundary_elements(outside_boundary_nodes):
     outside_boundary_elements = []
@@ -622,13 +787,21 @@ def get_inside_boundary_elements(both_boundary, outside_boundary_elements):
     return inside_boundary_elements
 
 
-def get_void_boundary_elements(part, cross_section_nodes, pattern):
+def get_void_elements(part, cross_section_nodes, ext_plane):
+    """
+    This is to get the void elements on the cross section
+    """
     void_boundary_elements = []
     for element in part.elements.values():
+        trigger = True
         if element.initially_active == False:
-            for no in pattern:
-                if element.nodes[no] in cross_section_nodes:
-                    void_boundary_elements.append(element.label)
+            for node in element.nodes:
+                if node_on_plane(node, ext_plane, part):
+                    trigger = False
+                else:
+                    pass
+            if trigger == False:
+                void_boundary_elements.append(element.label)
     void_boundary_elements = list(set(void_boundary_elements))
     return void_boundary_elements
 
@@ -652,7 +825,7 @@ def get_inside_nodes(cross_section_set, cross_section_nodes, ap, part, outside_b
     """
     from shapely.geometry import Point
     from shapely.geometry.polygon import Polygon
-    void_boundary_elements = get_void_boundary_elements(part, cross_section_nodes, pattern)
+    void_boundary_elements = get_void_elements(part, cross_section_nodes, pattern)
     outside_coords = []
     normal = get_cross_section_normal(ap, part)
     print("The cross section normal is: ",normal)
@@ -751,7 +924,75 @@ def get_inside_nodes(cross_section_set, cross_section_nodes, ap, part, outside_b
     return inside_boundary_nodes, normal
 
 
-def get_original_outside_nodes(outside_boundary_nodes, part):
+def trim_coord(coord, normal_index):
+    if normal_index == 0:
+        coord = coord[1:3:1]
+    if normal_index == 1:
+        coord = coord[0:3:2]
+    if normal_index == 2:
+        coord = coord[0:2:1]
+    return coord
+
+
+def get_inside_nodes_v2(cross_section_set, cross_section_nodes, ap, part, outside_boundary_nodes, ext_plane):
+    """
+    :param cross_section_set:
+    :param cross_section_nodes:
+    :param part:
+    :param outside_boundary_nodes:
+    :return: inside_boundary_nodes: [{1:node1,2:node2,...},{1:node1,...}]
+    """
+    from shapely.geometry import Point
+    from shapely.geometry.polygon import Polygon
+    void_elements = get_void_elements(part, cross_section_nodes, ext_plane)
+    outside_coords = []
+    normal = ext_plane[1]
+    # print("The cross section normal is: ",normal)
+    normal_abs = np.absolute(normal)
+    # import copy
+    vbe = copy.deepcopy(void_elements)
+    normal_index = list(normal_abs).index(max(normal_abs))
+    for node in outside_boundary_nodes.values():
+        outside_coords.append(trim_coord(node.coordinates, normal_index))
+    poly = Polygon(outside_coords)
+    for element_label in vbe:
+        element = part.elements[element_label]
+        pt_in_poly = True
+        for node in element.nodes:
+            if node_on_plane(node, ext_plane, part):
+                coord = trim_coord(part.nodes[node].coordinates, normal_index)
+                pt = Point(coord)
+                if not pt.within(poly):
+                    pt_in_poly = False
+        if not pt_in_poly:
+            void_elements.remove(element_label)
+
+    clustered_elements = get_elements_clusters_v2(void_elements, part)
+    # print("The clustered void elements are: ",clustered_elements)
+    void_elements_nodes = []
+    for cluster in clustered_elements:
+        clustered_nodes = []
+        for element_label in cluster:
+            element = part.elements[element_label]
+            for node_label in element.nodes:
+                if node_label in cross_section_nodes:
+                    clustered_nodes.append(node_label)
+                else:
+                    pass
+        void_elements_nodes.append(list(set(clustered_nodes)))
+    # print("The void elements nodes are: ",void_elements_nodes)
+    inside_boundary_nodes = []
+    for cluster in void_elements_nodes:
+        boundary_nodes_list = []
+        for node_label in cluster:
+            boundary_nodes_list.append(node_label)
+        boundary_nodes = trace_boundary_nodes(boundary_nodes_list, 'outside', ap, part)
+        inside_boundary_nodes.append(boundary_nodes)
+    print("The length of inside nodes list is: ", len(inside_boundary_nodes))
+    return inside_boundary_nodes
+
+
+def get_original_outside_nodes(outside_boundary_nodes, ap, part):
     """
 
     :param outside_boundary_nodes:
@@ -759,107 +1000,106 @@ def get_original_outside_nodes(outside_boundary_nodes, part):
     :return:{index:node_instance, ...}
     """
     original_boundary_nodes = {}
-    for index_node in outside_boundary_nodes.items():
+    keep_set = get_keep_set(ap, part)
+    for node_pair in outside_boundary_nodes.items():
         is_original_node = True
-        for element_label in index_node[-1].elements:
-            element = part.elements[element_label]
-            if element.initially_active:
-                pass
-            else:
-                is_original_node = False
+        if node_pair[-1].label in keep_set:
+            pass
+        else:
+            for element_label in node_pair[-1].elements:
+                element = part.elements[element_label]
+                if element.initially_active:
+                    pass
+                else:
+                    is_original_node = False
         if is_original_node:
-            original_boundary_nodes[index_node[0]] = index_node[-1]
+            original_boundary_nodes[node_pair[0]] = node_pair[-1]
     print("The length of original outside nodes list is: ",len(original_boundary_nodes))
     return original_boundary_nodes
+
+
+def adjust_outside_nodes(outside_boundary_nodes, original_outside_nodes):
+    if len(original_outside_nodes) == 0:
+        pass
+    else:
+        spline_start = []
+        spline_end = []
+        if outside_boundary_nodes[0] in original_outside_nodes.values():
+            pass
+        else:
+            starting_spline = True
+            node_index = 0
+            while starting_spline:
+                spline_start.append(node_index)
+                node_index += 1
+                if outside_boundary_nodes[node_index] in original_outside_nodes.values():
+                    starting_spline = False
+                else:
+                    pass
+            node_index = len(outside_boundary_nodes) - 1
+            if outside_boundary_nodes[node_index] in original_outside_nodes.values():
+                pass
+            else:
+                ending_spline = True
+                while ending_spline:
+                    spline_end.append(node_index)
+                    node_index -= 1
+                    if outside_boundary_nodes[node_index] in original_outside_nodes.values():
+                        ending_spline = False
+                    else:
+                        pass
+    new_out_bd_nodes = outside_boundary_nodes.copy()
+    new_org_out_bd_nodes = original_outside_nodes.copy()
+    if len(spline_start) != 0 and len(spline_end) != 0:
+        for node_index in spline_start:
+            del new_out_bd_nodes[node_index]
+        for i in range(len(new_out_bd_nodes)):
+            new_out_bd_nodes[i] = outside_boundary_nodes[i + len(spline_start)]
+        len_out = len(new_out_bd_nodes)
+        for ni in spline_start:
+            new_out_bd_nodes[len_out + ni] = outside_boundary_nodes[ni]
+        # check length
+        if len(new_out_bd_nodes) == len(new_out_bd_nodes):
+            pass
+        else:
+            raise ValueError("The new_out_bd_nodes has different length from outside_boundary_nodes", new_out_bd_nodes,
+                             outside_boundary_nodes)
+
+        org_node_indexies = list(new_org_out_bd_nodes.keys())
+        # import copy
+        org_node_indexies_copy = copy.deepcopy(org_node_indexies)
+        for i in org_node_indexies_copy:
+            new_org_out_bd_nodes[i - len(spline_start)] = original_outside_nodes[i]
+    else:
+        pass
+    return new_out_bd_nodes, new_org_out_bd_nodes
+
+
+
+
+
+
+
 
 
 def get_all_boundary_nodes(ap, part):
     cross_section_set = get_cross_section(ap,part)
     # print("cross section set is:",cross_section_set)
 
-    cross_section_nodes, pattern = get_cross_section_nodes(cross_section_set, ap, part)
-    # print("64043 in cross section? ",64043 in cross_section_nodes)
+    cross_section_nodes, ext_plane = get_cross_section_nodes_v2(cross_section_set, ap, part)
+    both_boundary = get_both_boundary(cross_section_set, cross_section_nodes, ap, part)
 
-    # print("cross section nodes are: ",cross_section_nodes)
-    # print("length of cross section nodes are: ",len(cross_section_nodes))
-    both_boundary = get_both_boundary(cross_section_set, cross_section_nodes, ap,part)
-    # print(both_boundary)
     set_cross_section_node_neighbours(both_boundary, cross_section_nodes, ap, part)
 
 
     outside_boundary_nodes = get_outside_nodes(both_boundary, ap,part)
-    original_outside_nodes = get_original_outside_nodes(outside_boundary_nodes, part)
-    inside_boundary_nodes, normal = get_inside_nodes(cross_section_set, cross_section_nodes,
-                                             ap, part, outside_boundary_nodes, pattern)
+    original_outside_nodes = get_original_outside_nodes(outside_boundary_nodes, ap, part)
+    outside_boundary_nodes, original_outside_nodes = adjust_outside_nodes(outside_boundary_nodes,
+                                                                          original_outside_nodes)
+    inside_boundary_nodes = get_inside_nodes_v2(cross_section_set, cross_section_nodes,
+                                                ap, part, outside_boundary_nodes, ext_plane)
 
-    return (inside_boundary_nodes,outside_boundary_nodes,original_outside_nodes, normal)
-
-
-#def get_elements_on_side(outside_boundary, part):
-#    outside_elements = {}
-#    for node in outside_boundary.nodes.values():
-#        for element_label in node.elements:
-#            outside_elements[element_label]=part.elements[element_label]
-#    return outside_elements
-
-#def get_outside_boundary(both_boundary, part):
-#    """ Get the outside boundary for quasi 2D plate (unit element thickness)
-#    """
-#    outside_boundary = geometry.flat_geometry.Boundary(label = 'outside', elements=[], nodes=[])
-#    outside_boundary.nodes = get_outside_nodes(both_boundary)
-#    outside_boundary.elements = get_elements_on_side(outside_boundary, part)
-#    return outside_boundary
-
-#def get_inside_boundary(both_boundary, outside_boundary, part):
-#    """this should return a list since there can be many inside boundary
-#    """
-#    both_nodes_list = both_boundary.nodes.keys()
-#    outside_nodes_list = outside_boundary.nodes.keys()
-#    all_inside_nodes_list = both_nodes_list - out_nodes_list
-#    inside_boundary_list = []
-#    while all_inside_nodes_list != []:
-#        inside_boundary = geometry.flat_geometry.Boundary(label = 'inside', elements=[], nodes=[])
-#        inside_boundary.nodes = trace_boundary_nodes(all_inside_nodes_list, "inside")
-#        inside_boundary.elements = get_elements_on_side(inside_boundary, part)
-#        this_inside_nodes_list = inside_boundary.nodes.keys()
-#        inside_boundary_list.append(inside_boundary)
-#        all_inside_nodes_list - this_inside_nodes_list
-#    return inside_boundary_list
-
-#def get_original_boundary_elements(boundary, part):
-#    original_boundary_elements = []
-#    for element in boundary.elements.values():
-#        # this is for 2d case only
-#        if 'original' in element.location:
-#            original_boundary_elements.append(element)
-#    return original_boundary_elements
-
-
-
-#def get_each_boundary(ap,part): 
-#    both_boundary = get_both_boundary(part)
-#    both_nodes_coords = []
-#    for node_index in both_boundary.nodes:
-#        #print(part.nodes[node_index].coordinates)
-#        node_coord = tuple(part.nodes[node_index].coordinates)
-#        both_nodes_coords.append(node_coord)
-
-#    outside_boundary = get_outside_boundary(both_boundary, part)
-#    outside_boundary_coords = []
-#    for node_index in sorted(outside_boundary.nodes.keys()):
-#        coordinate = outside_boundary.nodes[node_index].coordinates
-#        outside_boundary_coords.append((coordinate[0], coordinate[1], coordinate[2]))
-
-#    original_out_boundary_nodes = get_original_boundary_nodes(outside_boundary,part)
-#    original_outside_nodes_dict = {}
-#    for node_index, node in outside_boundary.nodes.items():
-#        if node in original_outside_nodes_list:
-#            original_outside_nodes_dict[node_index] = node
-#    original_outside_coords = []
-#    for node_index in sorted(original_outside_nodes_dict.keys()):
-#        original_outside_coords.append(outside_boundary.nodes[node_index].coordinates)
-
-#    return [inside_boundary_coords, outside_boundary_coords, original_outside_nodes]
+    return (inside_boundary_nodes, outside_boundary_nodes, original_outside_nodes, ext_plane)
 
 
 if __name__ == '__main__':

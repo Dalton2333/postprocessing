@@ -19,12 +19,13 @@ def smooth_boundary_by_connecting(outside, s_to_e,new_outside):
 """
 
 import re
-import numpy as np
-import xlrd
-import xlwt
+
+# import xlrd
+# import xlwt
 import math
 import numpy
-import matplotlib.pyplot as plt
+import numpy as np
+
 
 def Get_both_boundary_nodes_from_inp(fh, both_boundary_nodes):
     ''' get both inner and outer boundaries '''
@@ -132,7 +133,6 @@ def find_outside_boundary(all_nodes, outside):
             break
         if i == len(all_nodes) - 1:
             tr_outside = list(np.transpose(outside))
-            import matplotlib.pyplot as plt
             # fig, ax = plt.subplots()
             # plt.scatter(tr_new_list[0], tr_new_list[1], s=1.2)
             # plt.plot(tr_outside[0], tr_outside[1])
@@ -261,10 +261,15 @@ def solve_knot_vector(parameter,p,n,start_de,end_de,knotvector):
     w=[]
     for i in range(nc+1):
         d=d+inc
-        high=int(d+0.5)
+        high = math.floor(d + 0.5)
         sum=0
         for j in range(low,high+1): sum=sum+parameter[j]
-        w.append(sum/(high-low+1))
+        # w.append(sum/(high-low+1))
+        try:
+            w.append(sum / (high - low + 1))
+        except:
+            print("w", w, "i", i, 'm', m, 'nc', nc, 'high', high, 'parameter', parameter)
+
         low=high+1
 
     iis=1-start_de
@@ -274,7 +279,6 @@ def solve_knot_vector(parameter,p,n,start_de,end_de,knotvector):
         js=max(0,i)
         je=min(nc,i+p-1)
         r=r+1
-
         sum=0
         for j in range(js,je+1): sum=sum+w[j]
         knotvector.append(sum/(je-js+1))
@@ -440,8 +444,8 @@ def skkkkkkkmooth_boundary_by_connecting(outside, s_to_e,new_outside):
         new_outside.extend(outside[s_to_e[ - 1][1]:])
     return
 # ----------------following is the new one
-def obtain_xy_of_bspline(input_coarse,output_xy_boundary,Control_list,n,former,latter,degree=3):
-    # to adapt teh method with C1-continuity
+def obtain_xy_of_bspline(input_coarse, output_xy_boundary, Control_list, n, former, latter, degree=int(3), c1=False):
+    # to adapt the method with C1-continuity
     U_parameter = []
     smooth_and_get_chord_length(input_coarse, U_parameter)
     p = degree  # p: degree of the curve
@@ -459,6 +463,7 @@ def obtain_xy_of_bspline(input_coarse,output_xy_boundary,Control_list,n,former,l
     # following is to make the C-1 continuity by project the second control point into the line
     # the former or letter value is set before calling this function
     measure = math.sqrt((C_list[0][0]-C_list[-1][0])*(C_list[0][0]-C_list[-1][0])+(C_list[0][1]-C_list[-1][1])*(C_list[0][1]-C_list[-1][1]))/len(C_list)
+    measure /= 2
     # if former!=(123456789,123456789):
     # Updated on 31/01/19 by dedao
     if True:
@@ -471,9 +476,14 @@ def obtain_xy_of_bspline(input_coarse,output_xy_boundary,Control_list,n,former,l
             C_list[1][1] = former[1]
             if measure > C_list[1][0]-C_list[0][0] > 0 : C_list[1][0]=C_list[0][0]+measure
             if measure > C_list[0][0]-C_list[1][0] > 0 : C_list[1][0]=C_list[0][0]-measure
-        else:
-            #print('former',former,'input_coarse',input_coarse[0])
-            raise ValueError('Check the former')
+        else:  # The endpoint is not along the vertical or horizontal direction of the straight line
+            C_list[1][0] = former[0] + measure * (C_list[0][0] - former[0]) / math.sqrt(
+                (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
+            C_list[1][1] = former[1] + measure * (C_list[0][1] - former[1]) / math.sqrt(
+                (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
+            pass
+
+            # raise ValueError('Check the former')
     # if latter!=(123456789,123456789):
     #  Updated on 31/01/19 by dedao
     if True:
@@ -486,13 +496,17 @@ def obtain_xy_of_bspline(input_coarse,output_xy_boundary,Control_list,n,former,l
             if measure > C_list[-2][0]-C_list[-1][0] > 0 : C_list[-2][0]=C_list[-1][0]+measure
             if measure > C_list[-1][0] - C_list[-2][0] > 0: C_list[-2][0]=C_list[-1][0] - measure
         else:
-
-            #print('latter',latter,"input_coarse",input_coarse[-1])
-            raise ValueError('Check the latter')
+            C_list[-2][0] = latter[0] + measure * (C_list[-1][0] - latter[0]) / math.sqrt(
+                (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
+            C_list[-2][1] = latter[1] + measure * (C_list[-1][1] - latter[1]) / math.sqrt(
+                (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
+            pass
+            # print('latter',latter,"input_coarse",input_coarse[-1])
+            # raise ValueError('Check the latter')
 
 
     Control_list.extend(C_list)
-    xx = numpy.linspace(0.000, 1, 1000)
+    xx = numpy.linspace(0.000, 1, 200)
     if output_xy_boundary!=[]:
         raise ValueError('it should be empty')
     for x in xx:
@@ -562,7 +576,8 @@ def smooth_boundary_by_connecting(outside, s_to_e,new_outside):
         new_outside.extend(outside[s_to_e[-1][0]:])
     return
 
-def get_final_boundary(outside, original_outside_nodes_dict):
+
+def get_final_boundary(outside, original_outside_nodes_dict, c1):
     # (outside, s_to_e,new_outside):
     '''The final boundary consists of many points
     input:
@@ -574,10 +589,9 @@ def get_final_boundary(outside, original_outside_nodes_dict):
     if original_outside_nodes_dict == None:
         s_to_e = [(0, len(outside)-1)]
     else:
-
         s_to_e = []
-        print(sorted(original_outside_nodes_dict.keys()))
-        #for checking_index in range(sorted(original_outside_nodes_dict.keys())[-1]+1):
+        # print(sorted(original_outside_nodes_dict.keys()))
+
         check_index = 0
         check_in_list = True
         while check_in_list:
@@ -613,8 +627,9 @@ def get_final_boundary(outside, original_outside_nodes_dict):
     print(s_to_e)
     new_outside = []
 
+    degree = 3
     # original code_pack
-    if new_outside!=[]: raise ValueError('check this')
+    # if new_outside!=[]: raise ValueError('check this')
     #print(outside)
     if s_to_e[0][0] == 0:
         pass
@@ -625,12 +640,14 @@ def get_final_boundary(outside, original_outside_nodes_dict):
         n=int((s_to_e[0][0]+1)/10)+3
         former=outside[-1]
         latter=outside[s_to_e[0][0]+1]  # in this 'for ' loop, latter must be valid
-        #print('qqqqqqq',n,coarse)
-        obtain_xy_of_bspline(coarse,output,control,n,former,latter)
+
+        obtain_xy_of_bspline(coarse, output, control, n, former, latter, degree, c1)
         #print('22222222 new_outside',new_outside[-4],new_outside[-3],new_outside[-2],new_outside[-1],'next',output[0],output[1],'next',output[-2],output[-1],'next',outside[s_to_e[ii+1][0]-1],outside[s_to_e[ii+1][0]])
         new_outside.extend(output)
     for ii in range(len(s_to_e)-1):
+        # adding the nodes in the middle
         new_outside.extend(outside[s_to_e[ii][0]:s_to_e[ii][1]])
+        # adding keep nodes
         coarse=outside[s_to_e[ii][1]-1:s_to_e[ii+1][0]+1]   # here  s_to_e[ii+1][0]+1  the "+1 " is added (5-2 date)
         output=[]
         control=[]
@@ -641,8 +658,7 @@ def get_final_boundary(outside, original_outside_nodes_dict):
             former=outside[1]
         else: former=(2*outside[1][0]-outside[0][0],2*outside[1][1]-outside[0][1])
         latter=outside[s_to_e[ii+1][0]+1]  # in this 'for ' loop, latter must be valid
-        #print('qqqqqqq',n,coarse)
-        obtain_xy_of_bspline(coarse,output,control,n,former,latter)
+        obtain_xy_of_bspline(coarse, output, control, n, former, latter, degree, c1)
         #print('22222222 new_outside',new_outside[-4],new_outside[-3],new_outside[-2],new_outside[-1],'next',output[0],output[1],'next',output[-2],output[-1],'next',outside[s_to_e[ii+1][0]-1],outside[s_to_e[ii+1][0]])
         new_outside.extend(output)
         print("the node list length", len(outside))
@@ -656,7 +672,7 @@ def get_final_boundary(outside, original_outside_nodes_dict):
         n = int((s_to_e[ii][0] - s_to_e[ii - 1][1]) / 10) + 3
         former=outside[s_to_e[-1][1]-2]  # in this if section, former must be valid
         latter=(2*outside[-2][0]-outside[-1][0],2*outside[-2][1]-outside[-1][1])
-        obtain_xy_of_bspline(coarse, output, control, n, former, latter)
+        obtain_xy_of_bspline(coarse, output, control, n, former, latter, degree, c1)
         new_outside.extend(output)
     else:
         print("the last straight line")
