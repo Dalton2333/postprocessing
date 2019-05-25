@@ -10,7 +10,7 @@ import geometry.boundary_extractor
 import matplotlib.pyplot as plt
 import numpy
 import spline_fitting.subdivision as ss
-import utilities.abaqus.inp_reader_v2
+import utilities.abaqus.inp_tree_processor_v2
 import utilities.logger as lgr
 from scipy.interpolate import splprep, splev
 

@@ -1,23 +1,3 @@
-"""this finish the outside boundary function like
-def Get_both_boundary_nodes_from_inp(fh, both_boundary_nodes):
-def find_outside_boundary(all_nodes, outside):
-def find_x_min(onelist,x_min_Formal_parameter):
-def sort_boundary_from_x_min(onelist,x_min_Formal_parameter,Newlist):
-def find_straight_line(listnode,threshold_number,emptylist):
-
-def B(x, p, i, t):
-def bspline_x(x, t, c, p):
-def bspline_y(x, t, c, p):
-def solve_knot_vector(t,p,n,start_de,end_de,knotvector):
-def smooth_and_get_chord_length(input_coarse,output_chordlength):
-def Get_Control(input_coarse, chord_length, p, t, n, outputControlPoint):
-def obtain_xy_of_bspline(input_coarse,output_xy_boundary,Control_list,n,degree=3):
-
-
-def merge_straght_line(s_to_e,new_s_to_e):
-def smooth_boundary_by_connecting(outside, s_to_e,new_outside):
-"""
-
 import re
 
 # import xlrd
@@ -462,63 +442,25 @@ def obtain_xy_of_bspline(input_coarse, output_xy_boundary, Control_list, n, form
     # print(len(C_list), 'this is length of list', n)
     # following is to make the C-1 continuity by project the second control point into the line
     # the former or letter value is set before calling this function
-    measure = math.sqrt((C_list[0][0]-C_list[-1][0])*(C_list[0][0]-C_list[-1][0])+(C_list[0][1]-C_list[-1][1])*(C_list[0][1]-C_list[-1][1]))/len(C_list)
-    # measure /= 2
+    measure = math.sqrt((C_list[0][0] - C_list[-1][0]) ** 2 + (C_list[0][1] - C_list[-1][1]) ** 2) / len(C_list)
+    measure /= 2
 
     # Updated on 23/05/19 by dedao.
     # Update the algorithm for moving the endpoint for c1 continuity:
     c1 = True
     if c1 == True:
-        C_list[1][0] = former[0] + measure * (C_list[0][0] - former[0]) / math.sqrt(
+        C_list[1][0] = C_list[0][0] + measure * (C_list[0][0] - former[0]) / math.sqrt(
             (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
-        C_list[1][1] = former[1] + measure * (C_list[0][1] - former[1]) / math.sqrt(
+        C_list[1][1] = C_list[0][1] + measure * (C_list[0][1] - former[1]) / math.sqrt(
             (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
 
-        C_list[-2][0] = latter[0] + measure * (C_list[-1][0] - latter[0]) / math.sqrt(
+        C_list[-2][0] = C_list[-1][0] + measure * (C_list[-1][0] - latter[0]) / math.sqrt(
             (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
-        C_list[-2][1] = latter[1] + measure * (C_list[-1][1] - latter[1]) / math.sqrt(
+        C_list[-2][1] = C_list[-1][1] + measure * (C_list[-1][1] - latter[1]) / math.sqrt(
             (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
-    # if True:
-    #     if former[0]==input_coarse[0][0]:
-    #         C_list[1][0]=former[0]
-    #         if  measure> C_list[1][1] - C_list[0][1]>0 : C_list[1][1] = C_list[0][1]+measure  # move the second control point
-    #         if  measure> C_list[0][1] - C_list[1][1] > 0 : C_list[1][1] = C_list[0][1]-measure
-    #
-    #     elif former[1]==input_coarse[0][1]:
-    #         C_list[1][1] = former[1]
-    #         if measure > C_list[1][0]-C_list[0][0] > 0 : C_list[1][0]=C_list[0][0]+measure
-    #         if measure > C_list[0][0]-C_list[1][0] > 0 : C_list[1][0]=C_list[0][0]-measure
-    #     else:  # The endpoint is not along the vertical or horizontal direction of the straight line
-    #         C_list[1][0] = former[0] + measure * (C_list[0][0] - former[0]) / math.sqrt(
-    #             (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
-    #         C_list[1][1] = former[1] + measure * (C_list[0][1] - former[1]) / math.sqrt(
-    #             (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
-    #         pass
-    #
-    #         # raise ValueError('Check the former')
-    # # if latter!=(123456789,123456789):
-    # #  Updated on 31/01/19 by dedao
-    # if True:
-    #     if latter[0]==input_coarse[-1][0]:
-    #         C_list[-2][0]=latter[0]
-    #         if measure > C_list[-2][1]-C_list[-1][1] > 0 : C_list[-2][1]=C_list[-1][1]+measure
-    #         if measure > C_list[-1][1] - C_list[-2][1] > 0: C_list[-2][1]=C_list[-1][1] - measure
-    #     elif latter[1]==input_coarse[-1][1]:
-    #         C_list[-2][1] = latter[1]
-    #         if measure > C_list[-2][0]-C_list[-1][0] > 0 : C_list[-2][0]=C_list[-1][0]+measure
-    #         if measure > C_list[-1][0] - C_list[-2][0] > 0: C_list[-2][0]=C_list[-1][0] - measure
-    #     else:
-    #         C_list[-2][0] = latter[0] + measure * (C_list[-1][0] - latter[0]) / math.sqrt(
-    #             (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
-    #         C_list[-2][1] = latter[1] + measure * (C_list[-1][1] - latter[1]) / math.sqrt(
-    #             (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
-    #         pass
-            # print('latter',latter,"input_coarse",input_coarse[-1])
-            # raise ValueError('Check the latter')
-
 
     Control_list.extend(C_list)
-    xx = numpy.linspace(0.000, 1, 200)
+    xx = numpy.linspace(0.000, 1, 100)
     if output_xy_boundary!=[]:
         raise ValueError('it should be empty')
     for x in xx:
@@ -526,13 +468,16 @@ def obtain_xy_of_bspline(input_coarse, output_xy_boundary, Control_list, n, form
 
     ts_coordinate_bspline=list(numpy.transpose(output_xy_boundary))
     ts_C=list(numpy.transpose(Control_list))
-    # fig, ax = plt.subplots()
-    # ax.plot(ts_C[0], ts_C[1], 'o')  # --------------------------------
-    # ax.plot(ts_C[0], ts_C[1], '--', lw=0.5, label='control point and line')
-    # ax.plot(ts_coordinate_bspline[0], ts_coordinate_bspline[1], 'r-', lw=0.25, label='Bspline')
-    # plt.title('part of outside boundary')
-    # ax.grid(True)
-    # plt.show()
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    ax.plot(ts_C[0], ts_C[1], 'o')  # --------------------------------
+    ax.plot(ts_C[0], ts_C[1], '--', lw=0.5, label='control point and line')
+    ax.plot(ts_coordinate_bspline[0], ts_coordinate_bspline[1], 'r-', lw=0.25, label='Bspline')
+    ax.plot(former[0], former[1], 'ro')
+    ax.plot(latter[0], latter[1], 'go')
+    plt.title('part of outside boundary')
+    ax.grid(True)
+    plt.show()
 
     return
 
@@ -651,7 +596,7 @@ def get_final_boundary(outside, original_outside_nodes_dict, c1):
         control=[]
         n=int((s_to_e[0][0]+1)/10)+3
         former=outside[-1]
-        latter=outside[s_to_e[0][0]+1]  # in this 'for ' loop, latter must be valid
+        latter = outside[s_to_e[0][0] + 2]  # in this 'for ' loop, latter must be valid
 
         obtain_xy_of_bspline(coarse, output, control, n, former, latter, degree, c1)
         #print('22222222 new_outside',new_outside[-4],new_outside[-3],new_outside[-2],new_outside[-1],'next',output[0],output[1],'next',output[-2],output[-1],'next',outside[s_to_e[ii+1][0]-1],outside[s_to_e[ii+1][0]])
@@ -664,26 +609,24 @@ def get_final_boundary(outside, original_outside_nodes_dict, c1):
         output=[]
         control=[]
         n=int((s_to_e[ii+1][0]-s_to_e[ii][1])/10)+3
-        if s_to_e[ii][1]-1 >0:  # s_to_e[ii][1] is the coarse begin
-            former=outside[s_to_e[ii][1]-2]
-        elif outside[0][0]==outside[1][0] or outside[0][1]==outside[1][1]:  # 按照一开始的前两个点优化
-            former=outside[1]
-        else: former=(2*outside[1][0]-outside[0][0],2*outside[1][1]-outside[0][1])
-        latter=outside[s_to_e[ii+1][0]+1]  # in this 'for ' loop, latter must be valid
+        # if s_to_e[ii][1]-1 >0:
+        former = outside[s_to_e[ii][1] - 2]
+        # elif outside[0][0]==outside[1][0] or outside[0][1]==outside[1][1]:
+        #     former=outside[1]
+        # else: former=(2*outside[1][0]-outside[0][0],2*outside[1][1]-outside[0][1])
+        latter = outside[s_to_e[ii + 1][0] + 2]  # in this 'for ' loop, latter must be valid
         obtain_xy_of_bspline(coarse, output, control, n, former, latter, degree, c1)
-        #print('22222222 new_outside',new_outside[-4],new_outside[-3],new_outside[-2],new_outside[-1],'next',output[0],output[1],'next',output[-2],output[-1],'next',outside[s_to_e[ii+1][0]-1],outside[s_to_e[ii+1][0]])
         new_outside.extend(output)
         print("the node list length", len(outside))
     if s_to_e[-1][1]!=len(outside)-1:
         print("the last spline piece")
-        new_outside.extend(outside[s_to_e[-1][0]:s_to_e[-1][1]])   #  !!!!!! attention this is a new added line
+        new_outside.extend(outside[s_to_e[-1][0]:s_to_e[-1][1]])
         coarse = outside[s_to_e[-1][1]-1:]
-        #print('777777',coarse)
         output = []
         control = []
         n = int((s_to_e[ii][0] - s_to_e[ii - 1][1]) / 10) + 3
-        former=outside[s_to_e[-1][1]-2]  # in this if section, former must be valid
-        latter=(2*outside[-2][0]-outside[-1][0],2*outside[-2][1]-outside[-1][1])
+        former = outside[s_to_e[-1][1] - 2]
+        latter = outside[1]
         obtain_xy_of_bspline(coarse, output, control, n, former, latter, degree, c1)
         new_outside.extend(output)
     else:
