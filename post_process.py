@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy
 import spline_fitting.subdivision as ss
 import utilities.abaqus.inp_tree_processor_v2
+import utilities.abaqus.inp_reader_v2
 import utilities.logger as lgr
 from scipy.interpolate import splprep, splev
 
@@ -420,7 +421,7 @@ def get_nodes_coords_2d(boundary):
     return coords
 
 
-def make_plots(ext_org=True, ext_spl=True, ext_spl_pac="kz", both_org=True, both_spl_void=True, both_spl_spl=True,
+def make_plots(ext_org=True, ext_spl=True, ext_spl_pac="scp", both_org=True, both_spl_void=True, both_spl_spl=True,
                lw=1):
 
     # fig, ax = plt.subplots()
@@ -529,7 +530,7 @@ if __name__ == '__main__':
 
     # para_path = os.getcwd()+'/../Cases/Impeller/'
     # para_path = os.getcwd()+'/../CantD/'
-    para_path = os.getcwd() + '/../HookValidation/'
+    para_path = os.getcwd() + '/../CantD/'
     sys.path.insert(0, para_path)
     import parameters
     ap = parameters.ap
@@ -567,13 +568,23 @@ if __name__ == '__main__':
         else:
             pass
 
-    import json
+    inside_points = []
+    for cluster in inside_boundary:
+        cluster_nodes = get_nodes_coords_2d(cluster)
+        cluster_nodes_list = []
+        for node in cluster_nodes:
+            cluster_nodes_list.append(node.tolist())
+        inside_points.append(cluster_nodes_list)
 
+    import json
     with open(ap['test_dir_path'] + 'boundary.txt', 'w') as file:
-        out_put = {"circles": circles, "ext_bd": outside_plot_list}
-        json.dump(out_put, file)
-        # json.dump(f_out_bd_coords_list,file)
+        out_put = {"circles": circles, "ext_bd": outside_plot_list, "int_bd": inside_points}
+        # json.dump(out_put, file)
+        out_put=str(out_put)
+        file.write(out_put)
         file.close()
+
+    quit()
 
     ext_keep_coords = original_outside_plot.copy()
     for i in range(len(original_outside_plot)):
@@ -583,6 +594,11 @@ if __name__ == '__main__':
             ext_keep_coords[i] = list(original_outside_plot[i])
         else:
             pass
+
+    with open(ap['test_dir_path'] + 'Opted_boundary.txt', 'w') as file:
+        out_put = {"inside_boundary": inside_boundary, "outside_boundary": outside_boundary}
+        json.dump(out_put, file)
+        file.close()
 
     with open(ap['test_dir_path'] + 'smoothing.txt', 'w') as file:
         out_put = {"circles": circles, "ext_bd": f_out_bd_coords_list, "ext_bd_keep": ext_keep_coords}
@@ -595,6 +611,6 @@ if __name__ == '__main__':
         json.dump(out_put, file)
         file.close()
 
-    quit()
+
 
 

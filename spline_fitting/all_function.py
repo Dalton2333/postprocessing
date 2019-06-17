@@ -624,7 +624,7 @@ def get_final_boundary(outside, original_outside_nodes_dict, c1):
         coarse = outside[s_to_e[-1][1]-1:]
         output = []
         control = []
-        n = int((s_to_e[ii][0] - s_to_e[ii - 1][1]) / 10) + 3
+        n = int((len(outside)-1 - s_to_e[-1][1]) / 10) + 3
         former = outside[s_to_e[-1][1] - 2]
         latter = outside[1]
         obtain_xy_of_bspline(coarse, output, control, n, former, latter, degree, c1)

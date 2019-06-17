@@ -13,8 +13,6 @@ def replace_poly(inside_clusters,):
         area = poly.area
         centre = list(list(poly.centroid.coords)[0])
         radius = math.sqrt(area/math.pi)
-        # print(centre)
-        # quit()
         edge = [centre[0]+radius,centre[1]]
         circle = [centre,radius,edge,area]
         circles.append(circle)
