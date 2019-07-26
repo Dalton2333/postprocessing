@@ -83,7 +83,7 @@ def get_final_boundary(outside_boundary_coords, original_outside_nodes_dict, nor
                 check_in_piece = False
                 while not check_in_piece:
                     check_index += 1
-                    print(check_index)
+                    # print(check_index)
                     if check_index in original_outside_nodes_dict.keys():
                         check_in_piece = True
                     if check_index >= sorted(original_outside_nodes_dict.keys())[-1]:
@@ -117,7 +117,7 @@ def get_final_boundary(outside_boundary_coords, original_outside_nodes_dict, nor
             full_indexes.append((s_to_e[tuple_index][1], s_to_e[tuple_index+1][0]))
         elif tuple_index == len(s_to_e) - 1:
             if s_to_e[tuple_index][1] < len(outside_boundary_coords)-1:
-                full_indexes.append((s_to_e[tuple_index][1], len(outside_boundary_coords)))
+                full_indexes.append((s_to_e[tuple_index][1], len(outside_boundary_coords)-1))
             elif s_to_e[tuple_index][1] == len(outside_boundary_coords)-1:
                 pass
             else:
@@ -421,11 +421,11 @@ def get_nodes_coords_2d(boundary):
     return coords
 
 
-def make_plots(ext_org=True, ext_spl=True, ext_spl_pac="scp", both_org=True, both_spl_void=True, both_spl_spl=True,
+def make_plots(ext_org=True, ext_spl=True, ext_spl_pac="kz", both_org=True, both_spl_void=True, both_spl_spl=True,
                lw=1):
 
     # fig, ax = plt.subplots()
-    outside_plot=get_nodes_coords_2d(outside_boundary)
+    outside_plot = get_nodes_coords_2d(outside_boundary)
     original_outside_plot = get_nodes_coords_2d(original_outside_boundary)
 
     inside_plot_org = []
@@ -509,7 +509,7 @@ def make_plots(ext_org=True, ext_spl=True, ext_spl_pac="scp", both_org=True, bot
             #     smoothness = 80
             cluster_nodes_sm = ss.average_smoothing(cluster_nodes)
             tck, u = splprep(numpy.array(cluster_nodes_sm).transpose(), u=None, s=smoothness, per=1)
-            u_new = numpy.linspace(u.min(), u.max(), 50)
+            u_new = numpy.linspace(u.min(), u.max(), 100)
             x_new, y_new = splev(u_new, tck, der=0)
             line, = plt.plot(x_new, y_new, 'black', lw=lw)
             inside_spl_cluster = []
@@ -529,8 +529,8 @@ if __name__ == '__main__':
     main_log.info("Post-processing starts.")
 
     # para_path = os.getcwd()+'/../Cases/Impeller/'
-    # para_path = os.getcwd()+'/../CantD/'
-    para_path = os.getcwd() + '/../CantD/'
+    para_path = os.getcwd()+'/../CantD/'
+    # para_path = os.getcwd() + '/../HookD/'
     sys.path.insert(0, para_path)
     import parameters
     ap = parameters.ap
@@ -584,7 +584,7 @@ if __name__ == '__main__':
         file.write(out_put)
         file.close()
 
-    quit()
+    # quit()
 
     ext_keep_coords = original_outside_plot.copy()
     for i in range(len(original_outside_plot)):

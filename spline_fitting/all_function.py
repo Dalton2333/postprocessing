@@ -561,6 +561,7 @@ def get_final_boundary(outside, original_outside_nodes_dict, c1):
                     if not check_index in original_outside_nodes_dict.keys():
                         check_in_piece = False
                         end_of_piece = check_index - 1
+                        # end_of_piece = check_index
                         s_to_e.append((start_of_piece, end_of_piece))
                     if check_index >= sorted(original_outside_nodes_dict.keys())[-1]:
                         check_in_list = False
@@ -580,6 +581,8 @@ def get_final_boundary(outside, original_outside_nodes_dict, c1):
         #        checking_index += 1
         #    else:
         #        s_to_e.append((first_checking_index, checking_index-1))
+        if s_to_e[-1][1] == len(outside)-2:
+            s_to_e[-1] = (s_to_e[-1][0],len(outside)-1)
     print("check list")
     print(s_to_e)
     new_outside = []

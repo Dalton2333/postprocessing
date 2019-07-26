@@ -10,6 +10,7 @@ import copy
 
 import geometry.constants
 import geometry.flat_geometry
+import utilities.test_output as test_output
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,6 +29,7 @@ def get_keep_set(ap, part):
     keep_set_name = ap['keep_set_name']
     keep_set = geometry.flat_geometry.get_set(keep_set_name, "nset", part)
     return keep_set.data
+
 
 def get_coords_average(list_of_coords):
     x = 0
@@ -171,7 +173,6 @@ def get_corrected_normal(normal, pattern, sample_elements_list, part):
     else:
         raise ValueError("The dot product of two normals should not be zero: ",normal, corrected_normal)
     return corrected_normal
-
 
 
 def get_cross_section_sample_elements(cross_section_set, part):
@@ -596,6 +597,7 @@ def item_in_cluster_neighbours(element_label, clusters):
             raise Exception("The neighbour list is not right: ",cluster[1][1])
     return in_cluster, cluster_no
 
+
 def node_on_cross_section_surface(node_to_check, normal, node_on_plane, part):
     node0 = part.nodes[node_on_plane].coordinates
     node_new = part.nodes[node_to_check].coordinates
@@ -611,6 +613,7 @@ def node_on_cross_section_surface(node_to_check, normal, node_on_plane, part):
         return True
     else:
         return False
+
 
 def add_void_elements(void_boundary_elements, part, void_elements, pattern, normal):
     element0 = void_boundary_elements[0]
@@ -766,9 +769,6 @@ def get_elements_clusters_v2(void_elements, part, ):
     return clusters
 
 
-
-
-
 def get_outside_boundary_elements(outside_boundary_nodes):
     outside_boundary_elements = []
     for node in outside_boundary_nodes.values():
@@ -804,6 +804,7 @@ def get_void_elements(part, cross_section_nodes, ext_plane):
                 void_boundary_elements.append(element.label)
     void_boundary_elements = list(set(void_boundary_elements))
     return void_boundary_elements
+
 
 def plot_polygon(poly):
     x,y = poly.exterior.xy
@@ -1019,14 +1020,23 @@ def get_original_outside_nodes(outside_boundary_nodes, ap, part):
 
 
 def adjust_outside_nodes(outside_boundary_nodes, original_outside_nodes):
+    """
+    If the boundary starts with spline,
+    move the starting node to the first original node.
+    :param outside_boundary_nodes:
+    :param original_outside_nodes:
+    :return:
+    """
     if len(original_outside_nodes) == 0:
         pass
     else:
         spline_start = []
         spline_end = []
         if outside_boundary_nodes[0] in original_outside_nodes.values():
+            # starting with original boundary
             pass
         else:
+            # starting with spline
             starting_spline = True
             node_index = 0
             while starting_spline:
@@ -1048,38 +1058,27 @@ def adjust_outside_nodes(outside_boundary_nodes, original_outside_nodes):
                         ending_spline = False
                     else:
                         pass
-    new_out_bd_nodes = outside_boundary_nodes.copy()
-    new_org_out_bd_nodes = original_outside_nodes.copy()
+    # outside_boundary_nodes_copy = outside_boundary_nodes.copy()
+    # new_org_out_bd_nodes = original_outside_nodes.copy()
+
     if len(spline_start) != 0 and len(spline_end) != 0:
-        for node_index in spline_start:
-            del new_out_bd_nodes[node_index]
-        for i in range(len(new_out_bd_nodes)):
-            new_out_bd_nodes[i] = outside_boundary_nodes[i + len(spline_start)]
-        len_out = len(new_out_bd_nodes)
-        for ni in spline_start:
-            new_out_bd_nodes[len_out + ni] = outside_boundary_nodes[ni]
-        # check length
-        if len(new_out_bd_nodes) == len(new_out_bd_nodes):
-            pass
-        else:
-            raise ValueError("The new_out_bd_nodes has different length from outside_boundary_nodes", new_out_bd_nodes,
-                             outside_boundary_nodes)
+        new_out_bd_nodes = {}
+        new_org_out_bd_nodes = {}
+        for index in range(len(outside_boundary_nodes)):
+            if index < len(outside_boundary_nodes) - len(spline_start):
+                new_out_bd_nodes[index] = outside_boundary_nodes[index+len(spline_start)]
+                if index+len(spline_start) in original_outside_nodes:
+                    new_org_out_bd_nodes[index] = original_outside_nodes[index+len(spline_start)]
 
-        org_node_indexies = list(new_org_out_bd_nodes.keys())
-        # import copy
-        org_node_indexies_copy = copy.deepcopy(org_node_indexies)
-        for i in org_node_indexies_copy:
-            new_org_out_bd_nodes[i - len(spline_start)] = original_outside_nodes[i]
+
+            else:
+                new_out_bd_nodes[index] = outside_boundary_nodes[index - len(outside_boundary_nodes) + len(spline_start)]
+                if index - len(outside_boundary_nodes) + len(spline_start) in original_outside_nodes:
+                    new_org_out_bd_nodes[index] = original_outside_nodes[index - len(outside_boundary_nodes) + len(spline_start)]
     else:
-        pass
+        new_out_bd_nodes = outside_boundary_nodes
+        new_org_out_bd_nodes = original_outside_nodes
     return new_out_bd_nodes, new_org_out_bd_nodes
-
-
-
-
-
-
-
 
 
 def get_all_boundary_nodes(ap, part):
@@ -1089,13 +1088,25 @@ def get_all_boundary_nodes(ap, part):
     cross_section_nodes, ext_plane = get_cross_section_nodes_v2(cross_section_set, ap, part)
     both_boundary = get_both_boundary(cross_section_set, cross_section_nodes, ap, part)
 
+    # test_output.write_file(both_boundary,ap["test_dir_path"]+"both_boundary.txt")
+    # print(both_boundary)
+
     set_cross_section_node_neighbours(both_boundary, cross_section_nodes, ap, part)
 
-
     outside_boundary_nodes = get_outside_nodes(both_boundary, ap,part)
+
+    test_output.write_file(outside_boundary_nodes, ap["test_dir_path"] + "outside_boundary_nodes0.txt")
+
     original_outside_nodes = get_original_outside_nodes(outside_boundary_nodes, ap, part)
+    test_output.write_file(original_outside_nodes, ap["test_dir_path"] + "original_outside_nodes0.txt")
+
+
     outside_boundary_nodes, original_outside_nodes = adjust_outside_nodes(outside_boundary_nodes,
                                                                           original_outside_nodes)
+
+    test_output.write_file(outside_boundary_nodes, ap["test_dir_path"] + "outside_boundary_nodes1.txt")
+    test_output.write_file(original_outside_nodes, ap["test_dir_path"] + "original_outside_nodes1.txt")
+
     inside_boundary_nodes = get_inside_nodes_v2(cross_section_set, cross_section_nodes,
                                                 ap, part, outside_boundary_nodes, ext_plane)
 
