@@ -14,6 +14,7 @@ import utilities.abaqus.inp_tree_processor_v2
 import utilities.abaqus.inp_reader_v2
 import utilities.logger as lgr
 from scipy.interpolate import splprep, splev
+from utilities.test_output import write_file
 
 
 def get_desired_part(parts_list,ap):
@@ -529,12 +530,15 @@ if __name__ == '__main__':
     main_log.info("Post-processing starts.")
 
     # para_path = os.getcwd()+'/../Cases/Impeller/'
-    para_path = os.getcwd()+'/../CantD/'
-    # para_path = os.getcwd() + '/../HookD/'
+    # para_path = os.getcwd()+'/../CantD/'
+    para_path = os.getcwd() + '/../HookD/'
     sys.path.insert(0, para_path)
     import parameters
     ap = parameters.ap
     parsed_inp_file = utilities.abaqus.inp_reader_v2.parse_inp_file(ap['inp_path'])
+    # write_file(parsed_inp_file,ap["test_dir_path"]+"parsed_inp_file.txt")
+    # print(parsed_inp_file)
+
     parts_list = utilities.abaqus.inp_tree_processor_v2.process_tree(parsed_inp_file)
     part = get_desired_part(parts_list,ap)
     ## delete parsed parts to release memory
@@ -596,8 +600,10 @@ if __name__ == '__main__':
             pass
 
     with open(ap['test_dir_path'] + 'Opted_boundary.txt', 'w') as file:
-        out_put = {"inside_boundary": inside_boundary, "outside_boundary": outside_boundary}
-        json.dump(out_put, file)
+        file.write("inside_boundary\n")
+        file.write(str(inside_boundary)+"\n")
+        file.write("outside_boundary\n")
+        file.write(str(outside_boundary)+"\n")
         file.close()
 
     with open(ap['test_dir_path'] + 'smoothing.txt', 'w') as file:

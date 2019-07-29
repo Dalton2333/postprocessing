@@ -455,9 +455,9 @@ def obtain_xy_of_bspline(input_coarse, output_xy_boundary, Control_list, n, form
             (C_list[0][0] - former[0]) ** 2 + (C_list[0][1] - former[1]) ** 2)
 
         C_list[-2][0] = C_list[-1][0] + measure * (C_list[-1][0] - latter[0]) / math.sqrt(
-            (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
+            (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - latter[1]) ** 2)
         C_list[-2][1] = C_list[-1][1] + measure * (C_list[-1][1] - latter[1]) / math.sqrt(
-            (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - former[1]) ** 2)
+            (C_list[-1][0] - latter[0]) ** 2 + (C_list[-1][1] - latter[1]) ** 2)
 
     Control_list.extend(C_list)
     xx = numpy.linspace(0.000, 1, 100)
